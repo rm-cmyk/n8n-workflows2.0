@@ -114,11 +114,59 @@ sollte `n8n-mcp` als verbunden anzeigen. Ein schneller Test:
 
 > Liste mir die verfuegbaren n8n-Nodes fuer Webhooks auf.
 
+## Workflows
+
+### `workflows/email-classifier.json`
+
+Klassifiziert eingehende Mails aus einer Outlook-Shared-Mailbox (Posteingang,
+Polling alle 5 Min) per OpenAI `gpt-4o-mini` in 5 Kategorien + `other`:
+
+| Kategorie | Aktionen |
+|---|---|
+| **Kundenanfragen** | Trello-Karte (Board *Privatkunden*) + PDF/JPEG-Anhaenge hochladen -> SeaTable-Zeile anlegen -> Template-Antwortmail -> Move -> `Kundenanfragen` + Mark Read |
+| **Lieferantenanfragen** | Move -> `Lieferantenanfragen` + Mark Read |
+| **Bewerbungen** | Trello-Karte (Board *Recruiting & Onboarding*) + alle Anhaenge -> Move -> `Bewerbungen` + Mark Read |
+| **SpamWerbung** | Move -> `SpamWerbung` |
+| **Rechnungen** | Forward an Platzhalter-Mail per Microsoft Graph API |
+| **other** | keine Aktion |
+
+**Vor dem Aktivieren ersetzen (Search & Replace im JSON):**
+
+| Platzhalter | Bedeutung |
+|---|---|
+| `REPLACE_ME_OUTLOOK_CRED` | ID der Outlook-OAuth2-Credential in n8n |
+| `REPLACE_ME_OPENAI_CRED` | ID der OpenAI-Credential |
+| `REPLACE_ME_TRELLO_CRED` | ID der Trello-Credential |
+| `REPLACE_ME_SEATABLE_CRED` | ID der SeaTable-Credential |
+| `LIST_ID_PRIVATKUNDEN` | Trello-List-ID fuer Kundenanfragen (Board *Privatkunden*) |
+| `LIST_ID_RECRUITING` | Trello-List-ID fuer Bewerbungen (Board *Recruiting & Onboarding*) |
+| `SEATABLE_TABLE_NAME` | SeaTable-Tabellenname |
+| `FOLDER_ID_KUNDENANFRAGEN` | Outlook-Ordner-ID unter Inbox |
+| `FOLDER_ID_LIEFERANTENANFRAGEN` | dto. |
+| `FOLDER_ID_BEWERBUNGEN` | dto. |
+| `FOLDER_ID_SPAMWERBUNG` | dto. |
+| `SHARED_MAILBOX_UPN` | UPN der Shared Mailbox (z. B. `info@firma.de`) – in der Forward-URL |
+| `RECHNUNGEN_ZIEL_MAIL` | Zieladresse fuer weitergeleitete Rechnungen |
+
+**IDs finden:**
+- Outlook-Folder-IDs: `https://developer.microsoft.com/graph/graph-explorer` -> `GET /users/{upn}/mailFolders/inbox/childFolders`
+- Trello-List-IDs: Board-URL + `.json` anhaengen oder `GET https://api.trello.com/1/boards/{id}/lists`
+
+**Import in n8n:**
+1. In n8n: *Workflows* -> *Import from File* -> `workflows/email-classifier.json`
+2. Platzhalter ersetzen (Credentials + IDs)
+3. SeaTable-Tabelle mit Spalten `Datum, Absender_Name, Absender_Mail, Betreff, Body_Preview, Kategorie, Anhaenge_Anzahl, Outlook_MessageId, Trello_Card_Url` anlegen
+4. Outlook-Unterordner `Kundenanfragen`, `Lieferantenanfragen`, `Bewerbungen`, `SpamWerbung` unter Posteingang anlegen
+5. Workflow aktivieren
+
+**Validierung:** Das JSON wurde gegen die n8n-Node-Schemas via `n8n-mcp validate_workflow` geprueft – 0 Errors (5 informationelle Warnings bzgl. Error-Handling-Empfehlungen, HTTP-Request-Nodes haben `retryOnFail: true`).
+
 ## Dateien in diesem Repo
 
 - [`.mcp.json`](./.mcp.json) – Claude Code MCP-Server-Konfiguration
 - [`.env.example`](./.env.example) – Vorlage fuer Environment-Variablen
 - [`.gitignore`](./.gitignore) – schliesst `.env` und lokale Artefakte aus
+- [`workflows/email-classifier.json`](./workflows/email-classifier.json) – Outlook Mail Classifier Workflow
 
 ## Links
 

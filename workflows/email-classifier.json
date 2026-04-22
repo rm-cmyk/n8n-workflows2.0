@@ -1,0 +1,657 @@
+{
+  "name": "Email Classifier - Outlook Shared Mailbox",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Email Classifier\n\n**Trigger:** Outlook Shared Mailbox (Posteingang, alle 5 Min)\n\n**Klassifikation:** OpenAI gpt-4o-mini\n\n**Kategorien & Aktionen:**\n1. **Kundenanfragen** -> Trello (Board *Privatkunden*) + SeaTable + Antwortmail (Template) + Move -> `Kundenanfragen` + Mark Read\n2. **Lieferantenanfragen** -> Move -> `Lieferantenanfragen` + Mark Read\n3. **Bewerbungen** -> Trello (Board *Recruiting & Onboarding*) inkl. Anhaenge + Move -> `Bewerbungen` + Mark Read\n4. **SpamWerbung** -> Move -> `SpamWerbung`\n5. **Rechnungen** -> Forward an Platzhalter-Mail (Graph API)\n6. **Unklassifiziert (other)** -> keine Aktion\n\n**Vor Aktivierung setzen:**\n- Outlook-Credential `microsoftOutlookOAuth2Api` (Shared Mailbox mit `Mail.ReadWrite`, `Mail.Send`)\n- OpenAI-Credential `openAiApi`\n- Trello-Credential `trelloApi` (wird auch fuer HTTP-Attachment-Upload genutzt)\n- SeaTable-Credential `seaTableApi` + `SEATABLE_TABLE_NAME`\n- Trello-List-IDs: `LIST_ID_PRIVATKUNDEN`, `LIST_ID_RECRUITING`\n- Outlook-Folder-IDs: `FOLDER_ID_KUNDENANFRAGEN`, `FOLDER_ID_LIEFERANTENANFRAGEN`, `FOLDER_ID_BEWERBUNGEN`, `FOLDER_ID_SPAMWERBUNG`\n- `SHARED_MAILBOX_UPN` (z.B. `info@firma.de`) und `RECHNUNGEN_ZIEL_MAIL`\n\n**Ordner-IDs finden:** Graph Explorer `GET /users/{upn}/mailFolders/inbox/childFolders`.\n**Trello Listen-IDs:** `https://trello.com/b/<board>.json` oder API `GET /boards/{id}/lists`.",
+        "height": 540,
+        "width": 520
+      },
+      "id": "00000000-0000-0000-0000-000000000001",
+      "name": "README",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-640, -260]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyX",
+              "value": 5,
+              "unit": "minutes"
+            }
+          ]
+        },
+        "triggerOn": "messageReceived",
+        "filters": {
+          "folderId": "inbox"
+        },
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "id": "10000000-0000-0000-0000-000000000001",
+      "name": "Outlook Trigger (Posteingang)",
+      "type": "n8n-nodes-base.microsoftOutlookTrigger",
+      "typeVersion": 1,
+      "position": [-320, 280],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "REPLACE_ME_OUTLOOK_CRED",
+          "name": "Microsoft Outlook (Shared Mailbox)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {
+          "temperature": 0
+        }
+      },
+      "id": "10000000-0000-0000-0000-000000000002",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [40, 520],
+      "credentials": {
+        "openAiApi": {
+          "id": "REPLACE_ME_OPENAI_CRED",
+          "name": "OpenAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputText": "=Betreff: {{ $json.subject }}\nVon: {{ $json.from?.emailAddress?.name }} <{{ $json.from?.emailAddress?.address }}>\nAnhaenge: {{ ($json.hasAttachments ? 'ja' : 'nein') }}\n\n---\n{{ ($json.bodyPreview || '') }}\n\n{{ ($json.body?.content || '').toString().replace(/<[^>]+>/g, ' ').slice(0, 4000) }}",
+        "categories": {
+          "categories": [
+            {
+              "category": "Kundenanfragen",
+              "description": "Anfragen von (potenziellen) Privatkunden: Produktfragen, Angebote, Support, Beschwerden, Terminanfragen. Meist persoenlich formuliert. KEINE Rechnungen."
+            },
+            {
+              "category": "Lieferantenanfragen",
+              "description": "Nachrichten von Lieferanten, Grosshaendlern oder B2B-Partnern: Angebote, Preislisten, Lieferbestaetigungen, Produktneuheiten. KEINE Rechnungen."
+            },
+            {
+              "category": "Bewerbungen",
+              "description": "Jobbewerbungen mit oder ohne Anhang: Anschreiben, Lebenslauf, Zeugnisse, Initiativbewerbungen, Praktikumsanfragen."
+            },
+            {
+              "category": "SpamWerbung",
+              "description": "Unaufgeforderte Werbung, Marketing-Newsletter, Massenmails, Phishing, SEO-/Backlink-Angebote, offensichtlicher Spam."
+            },
+            {
+              "category": "Rechnungen",
+              "description": "Eingehende Rechnungen, Gutschriften, Mahnungen, Zahlungserinnerungen. Oft mit PDF-Anhang und Stichworten wie 'Rechnung', 'Invoice', 'Beleg-Nr', 'Faellig'."
+            }
+          ]
+        },
+        "options": {
+          "fallback": "other",
+          "systemPromptTemplate": "Du bist ein Klassifikator fuer eingehende Geschaeftsmails. Ordne die Mail GENAU einer Kategorie zu. Wenn keine Kategorie eindeutig passt, gib 'other' zurueck. Antworte knapp und deterministisch.",
+          "multiClass": false
+        }
+      },
+      "id": "10000000-0000-0000-0000-000000000003",
+      "name": "Text Classifier",
+      "type": "@n8n/n8n-nodes-langchain.textClassifier",
+      "typeVersion": 1.1,
+      "position": [60, 280],
+      "onError": "continueErrorOutput"
+    },
+
+    {
+      "parameters": {
+        "resource": "card",
+        "operation": "create",
+        "listId": "LIST_ID_PRIVATKUNDEN",
+        "name": "=Kundenanfrage: {{ $json.subject }}",
+        "additionalFields": {
+          "desc": "=**Von:** {{ $json.from?.emailAddress?.name }} <{{ $json.from?.emailAddress?.address }}>\n**Empfangen:** {{ $json.receivedDateTime }}\n**Outlook-MessageId:** {{ $json.id }}\n\n---\n\n{{ ($json.bodyPreview || '') }}\n\n{{ ($json.body?.content || '').toString().replace(/<[^>]+>/g, ' ').slice(0, 2000) }}"
+        }
+      },
+      "id": "20000000-0000-0000-0000-000000000001",
+      "name": "Trello: Create Card (Privatkunden)",
+      "type": "n8n-nodes-base.trello",
+      "typeVersion": 1,
+      "position": [500, 40],
+      "credentials": {
+        "trelloApi": {
+          "id": "REPLACE_ME_TRELLO_CRED",
+          "name": "Trello"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Emit one item per PDF/JPEG attachment from the trigger.\n// Trigger keeps binary under keys like 'attachment_0', 'attachment_1', ...\nconst trigger = $('Outlook Trigger (Posteingang)').first();\nconst triggerBinary = trigger.binary || {};\nconst out = [];\nfor (const item of $input.all()) {\n  const cardId = item.json.id || item.json.cardId;\n  for (const key of Object.keys(triggerBinary)) {\n    if (!key.toLowerCase().startsWith('attachment')) continue;\n    const b = triggerBinary[key];\n    const mime = (b.mimeType || '').toLowerCase();\n    const name = (b.fileName || '').toLowerCase();\n    const isPdf = mime.includes('pdf') || name.endsWith('.pdf');\n    const isJpeg = mime.includes('jpeg') || mime.includes('jpg') || name.endsWith('.jpg') || name.endsWith('.jpeg');\n    if (!isPdf && !isJpeg) continue;\n    out.push({\n      json: { cardId, fileName: b.fileName || key },\n      binary: { data: b }\n    });\n  }\n}\nreturn out;"
+      },
+      "id": "20000000-0000-0000-0000-000000000002",
+      "name": "Code: Filter Anhaenge (PDF/JPEG)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, -80]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.trello.com/1/cards/{{ $json.cardId }}/attachments",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "trelloApi",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            },
+            {
+              "name": "name",
+              "value": "={{ $json.fileName }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "20000000-0000-0000-0000-000000000003",
+      "name": "Trello: Upload Attachment (Privatkunden)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [940, -80],
+      "credentials": {
+        "trelloApi": {
+          "id": "REPLACE_ME_TRELLO_CRED",
+          "name": "Trello"
+        }
+      }
+    },
+
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "create",
+        "tableName": "SEATABLE_TABLE_NAME",
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldName": "Datum", "fieldValue": "={{ $('Outlook Trigger (Posteingang)').item.json.receivedDateTime }}" },
+            { "fieldName": "Absender_Name", "fieldValue": "={{ $('Outlook Trigger (Posteingang)').item.json.from?.emailAddress?.name }}" },
+            { "fieldName": "Absender_Mail", "fieldValue": "={{ $('Outlook Trigger (Posteingang)').item.json.from?.emailAddress?.address }}" },
+            { "fieldName": "Betreff", "fieldValue": "={{ $('Outlook Trigger (Posteingang)').item.json.subject }}" },
+            { "fieldName": "Body_Preview", "fieldValue": "={{ $('Outlook Trigger (Posteingang)').item.json.bodyPreview }}" },
+            { "fieldName": "Kategorie", "fieldValue": "Kundenanfragen" },
+            { "fieldName": "Anhaenge_Anzahl", "fieldValue": "={{ Object.keys($('Outlook Trigger (Posteingang)').item.binary || {}).filter(k => k.toLowerCase().startsWith('attachment')).length }}" },
+            { "fieldName": "Outlook_MessageId", "fieldValue": "={{ $('Outlook Trigger (Posteingang)').item.json.id }}" },
+            { "fieldName": "Trello_Card_Url", "fieldValue": "={{ $('Trello: Create Card (Privatkunden)').item.json.url }}" }
+          ]
+        }
+      },
+      "id": "20000000-0000-0000-0000-000000000004",
+      "name": "SeaTable: Append Row",
+      "type": "n8n-nodes-base.seaTable",
+      "typeVersion": 2,
+      "position": [720, 120],
+      "credentials": {
+        "seaTableApi": {
+          "id": "REPLACE_ME_SEATABLE_CRED",
+          "name": "SeaTable"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "reply",
+        "messageId": {
+          "__rl": true,
+          "value": "={{ $('Outlook Trigger (Posteingang)').item.json.id }}",
+          "mode": "id"
+        },
+        "replyType": "reply",
+        "message": "=<p>Guten Tag {{ $('Outlook Trigger (Posteingang)').item.json.from?.emailAddress?.name || '' }},</p><p>vielen Dank fuer Ihre Anfrage. Wir haben Ihre Nachricht erhalten und melden uns schnellstmoeglich bei Ihnen zurueck.</p><p>Freundliche Gruesse<br>Ihr Team</p><p style=\"color:#888;font-size:12px\">Diese Antwort wurde automatisch generiert.</p>",
+        "additionalFields": {
+          "bodyContentType": "html"
+        }
+      },
+      "id": "20000000-0000-0000-0000-000000000005",
+      "name": "Outlook: Reply (Template)",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [940, 120],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "REPLACE_ME_OUTLOOK_CRED",
+          "name": "Microsoft Outlook (Shared Mailbox)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "move",
+        "messageId": {
+          "__rl": true,
+          "value": "={{ $('Outlook Trigger (Posteingang)').item.json.id }}",
+          "mode": "id"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "FOLDER_ID_KUNDENANFRAGEN",
+          "mode": "id"
+        }
+      },
+      "id": "20000000-0000-0000-0000-000000000006",
+      "name": "Outlook: Move -> Kundenanfragen",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [1160, 120],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "REPLACE_ME_OUTLOOK_CRED",
+          "name": "Microsoft Outlook (Shared Mailbox)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "update",
+        "messageId": {
+          "__rl": true,
+          "value": "={{ $('Outlook Trigger (Posteingang)').item.json.id }}",
+          "mode": "id"
+        },
+        "updateFields": {
+          "isRead": true
+        }
+      },
+      "id": "20000000-0000-0000-0000-000000000007",
+      "name": "Outlook: Mark Read (Kunde)",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [1380, 120],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "REPLACE_ME_OUTLOOK_CRED",
+          "name": "Microsoft Outlook (Shared Mailbox)"
+        }
+      }
+    },
+
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "move",
+        "messageId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "FOLDER_ID_LIEFERANTENANFRAGEN",
+          "mode": "id"
+        }
+      },
+      "id": "30000000-0000-0000-0000-000000000001",
+      "name": "Outlook: Move -> Lieferanten",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [500, 280],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "REPLACE_ME_OUTLOOK_CRED",
+          "name": "Microsoft Outlook (Shared Mailbox)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "update",
+        "messageId": {
+          "__rl": true,
+          "value": "={{ $('Outlook Trigger (Posteingang)').item.json.id }}",
+          "mode": "id"
+        },
+        "updateFields": {
+          "isRead": true
+        }
+      },
+      "id": "30000000-0000-0000-0000-000000000002",
+      "name": "Outlook: Mark Read (Lieferant)",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [720, 280],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "REPLACE_ME_OUTLOOK_CRED",
+          "name": "Microsoft Outlook (Shared Mailbox)"
+        }
+      }
+    },
+
+    {
+      "parameters": {
+        "resource": "card",
+        "operation": "create",
+        "listId": "LIST_ID_RECRUITING",
+        "name": "=Bewerbung: {{ $json.subject }}",
+        "additionalFields": {
+          "desc": "=**Bewerber:** {{ $json.from?.emailAddress?.name }} <{{ $json.from?.emailAddress?.address }}>\n**Empfangen:** {{ $json.receivedDateTime }}\n**Outlook-MessageId:** {{ $json.id }}\n\n---\n\n{{ ($json.bodyPreview || '') }}\n\n{{ ($json.body?.content || '').toString().replace(/<[^>]+>/g, ' ').slice(0, 2000) }}"
+        }
+      },
+      "id": "40000000-0000-0000-0000-000000000001",
+      "name": "Trello: Create Card (Recruiting)",
+      "type": "n8n-nodes-base.trello",
+      "typeVersion": 1,
+      "position": [500, 440],
+      "credentials": {
+        "trelloApi": {
+          "id": "REPLACE_ME_TRELLO_CRED",
+          "name": "Trello"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Emit one item per attachment from the trigger (all types).\nconst trigger = $('Outlook Trigger (Posteingang)').first();\nconst triggerBinary = trigger.binary || {};\nconst out = [];\nfor (const item of $input.all()) {\n  const cardId = item.json.id || item.json.cardId;\n  for (const key of Object.keys(triggerBinary)) {\n    if (!key.toLowerCase().startsWith('attachment')) continue;\n    const b = triggerBinary[key];\n    out.push({\n      json: { cardId, fileName: b.fileName || key },\n      binary: { data: b }\n    });\n  }\n}\nreturn out;"
+      },
+      "id": "40000000-0000-0000-0000-000000000002",
+      "name": "Code: Alle Anhaenge",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 380]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.trello.com/1/cards/{{ $json.cardId }}/attachments",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "trelloApi",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            },
+            {
+              "name": "name",
+              "value": "={{ $json.fileName }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "40000000-0000-0000-0000-000000000003",
+      "name": "Trello: Upload Attachment (Bewerbung)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [940, 380],
+      "credentials": {
+        "trelloApi": {
+          "id": "REPLACE_ME_TRELLO_CRED",
+          "name": "Trello"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "move",
+        "messageId": {
+          "__rl": true,
+          "value": "={{ $('Outlook Trigger (Posteingang)').item.json.id }}",
+          "mode": "id"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "FOLDER_ID_BEWERBUNGEN",
+          "mode": "id"
+        }
+      },
+      "id": "40000000-0000-0000-0000-000000000004",
+      "name": "Outlook: Move -> Bewerbungen",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [720, 500],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "REPLACE_ME_OUTLOOK_CRED",
+          "name": "Microsoft Outlook (Shared Mailbox)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "update",
+        "messageId": {
+          "__rl": true,
+          "value": "={{ $('Outlook Trigger (Posteingang)').item.json.id }}",
+          "mode": "id"
+        },
+        "updateFields": {
+          "isRead": true
+        }
+      },
+      "id": "40000000-0000-0000-0000-000000000005",
+      "name": "Outlook: Mark Read (Bewerbung)",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [940, 500],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "REPLACE_ME_OUTLOOK_CRED",
+          "name": "Microsoft Outlook (Shared Mailbox)"
+        }
+      }
+    },
+
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "move",
+        "messageId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "FOLDER_ID_SPAMWERBUNG",
+          "mode": "id"
+        }
+      },
+      "id": "50000000-0000-0000-0000-000000000001",
+      "name": "Outlook: Move -> SpamWerbung",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [500, 660],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "REPLACE_ME_OUTLOOK_CRED",
+          "name": "Microsoft Outlook (Shared Mailbox)"
+        }
+      }
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.microsoft.com/v1.0/users/SHARED_MAILBOX_UPN/messages/{{ $json.id }}/forward",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "microsoftOutlookOAuth2Api",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ comment: 'Automatisch weitergeleitet (Kategorie: Rechnungen).', toRecipients: [{ emailAddress: { address: 'RECHNUNGEN_ZIEL_MAIL' } }] }) }}",
+        "options": {}
+      },
+      "id": "60000000-0000-0000-0000-000000000001",
+      "name": "Outlook: Forward Rechnung (Graph API)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [500, 820],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "REPLACE_ME_OUTLOOK_CRED",
+          "name": "Microsoft Outlook (Shared Mailbox)"
+        }
+      }
+    },
+
+    {
+      "parameters": {},
+      "id": "70000000-0000-0000-0000-000000000001",
+      "name": "Unklassifiziert (No-Op)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [500, 980]
+    }
+  ],
+  "connections": {
+    "Outlook Trigger (Posteingang)": {
+      "main": [
+        [
+          { "node": "Text Classifier", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          { "node": "Text Classifier", "type": "ai_languageModel", "index": 0 }
+        ]
+      ]
+    },
+    "Text Classifier": {
+      "main": [
+        [
+          { "node": "Trello: Create Card (Privatkunden)", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Outlook: Move -> Lieferanten", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Trello: Create Card (Recruiting)", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Outlook: Move -> SpamWerbung", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Outlook: Forward Rechnung (Graph API)", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Unklassifiziert (No-Op)", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+
+    "Trello: Create Card (Privatkunden)": {
+      "main": [
+        [
+          { "node": "Code: Filter Anhaenge (PDF/JPEG)", "type": "main", "index": 0 },
+          { "node": "SeaTable: Append Row", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Code: Filter Anhaenge (PDF/JPEG)": {
+      "main": [
+        [
+          { "node": "Trello: Upload Attachment (Privatkunden)", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "SeaTable: Append Row": {
+      "main": [
+        [
+          { "node": "Outlook: Reply (Template)", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Outlook: Reply (Template)": {
+      "main": [
+        [
+          { "node": "Outlook: Move -> Kundenanfragen", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Outlook: Move -> Kundenanfragen": {
+      "main": [
+        [
+          { "node": "Outlook: Mark Read (Kunde)", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+
+    "Outlook: Move -> Lieferanten": {
+      "main": [
+        [
+          { "node": "Outlook: Mark Read (Lieferant)", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+
+    "Trello: Create Card (Recruiting)": {
+      "main": [
+        [
+          { "node": "Code: Alle Anhaenge", "type": "main", "index": 0 },
+          { "node": "Outlook: Move -> Bewerbungen", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Code: Alle Anhaenge": {
+      "main": [
+        [
+          { "node": "Trello: Upload Attachment (Bewerbung)", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Outlook: Move -> Bewerbungen": {
+      "main": [
+        [
+          { "node": "Outlook: Mark Read (Bewerbung)", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [
+    { "name": "email-classifier" },
+    { "name": "outlook" }
+  ]
+}
