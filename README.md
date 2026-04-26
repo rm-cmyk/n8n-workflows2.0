@@ -161,12 +161,75 @@ Polling alle 5 Min) per OpenAI `gpt-4o-mini` in 5 Kategorien + `other`:
 
 **Validierung:** Das JSON wurde gegen die n8n-Node-Schemas via `n8n-mcp validate_workflow` geprueft – 0 Errors (5 informationelle Warnings bzgl. Error-Handling-Empfehlungen, HTTP-Request-Nodes haben `retryOnFail: true`).
 
+### `workflows/whatsapp-offer-bot.json` (+ 2 Sub-Workflows)
+
+WhatsApp-Bot fuer interne Mitarbeiter, der per Sprach- oder Textnachricht eine
+Kundenanfrage entgegennimmt und mit Hilfe eines AI Agent (gpt-4o + Memory)
+schrittweise ein Angebot erstellt, als PDF zurueck in den Chat sendet und
+optional per Mail an den Kunden weiterleitet.
+
+**Drei Workflows (in n8n alle drei importieren):**
+
+| Datei | Zweck |
+|---|---|
+| `workflows/whatsapp-offer-bot.json` | Main: WhatsApp-Trigger, Whitelist, Whisper, AI Agent |
+| `workflows/whatsapp-offer-bot.sub-send-pdf.json` | Sub: HTML -> PDFShift -> WhatsApp Document |
+| `workflows/whatsapp-offer-bot.sub-send-email.json` | Sub: HTML -> PDFShift -> Outlook Mail mit PDF-Anhang |
+
+**Conversation-Flow:**
+1. Mitarbeiter schickt Sprachnachricht (oder Text) mit Anfrage
+2. Bot transkribiert via OpenAI Whisper
+3. AI Agent fragt nach (Maße/Mengen/Material), nutzt `lookup_material` + `get_verrechnungssaetze` aus dem ERP
+4. Agent praesentiert Angebotsentwurf inkl. Summen + USt -> fragt **explizit** nach Bestaetigung
+5. Bei "ja": Agent ruft `send_offer_to_whatsapp` -> PDF wird erzeugt + ins Chat geschickt
+6. Agent fragt: "Soll ich das Angebot zusaetzlich an eine Kunden-Mailadresse senden?"
+7. Mitarbeiter nennt Adresse + Kundenname -> Agent ruft `send_offer_email` -> Mail mit PDF und Template "Lieber Kunde, hier ist Ihr Angebot..."
+
+**Vor Aktivierung setzen:**
+
+| Platzhalter | Bedeutung |
+|---|---|
+| `REPLACE_ME_WA_TRIGGER_CRED` | WhatsApp-Trigger-Credential (Verify Token) |
+| `REPLACE_ME_WA_CRED` | WhatsApp Business Cloud Credential (Access Token) |
+| `REPLACE_ME_PHONE_NUMBER_ID` | Phone Number ID aus Meta Developer Portal |
+| `WA_PHONE_NUMBER_ID` | gleicher Wert wie oben (in den Sub-Workflows in URLs) |
+| `REPLACE_ME_OPENAI_CRED` | OpenAI-Credential |
+| `REPLACE_ME_ERP_CRED` | ERP-API (Header Auth) |
+| `ERP_BASE_URL` | Basis-URL des ERP, z. B. `https://erp.firma.de/api` |
+| `REPLACE_ME_PDFSHIFT_CRED` | PDFShift Header `X-API-Key` |
+| `REPLACE_ME_OUTLOOK_OFFER_CRED` | Outlook-Credential des **Angebots-Postfachs** (anderes als beim Email-Classifier) |
+| `REPLACE_ME_SUBWF_WHATSAPP_ID` | Workflow-ID des `Sub: Send Offer WhatsApp` (nach Import in n8n setzen) |
+| `REPLACE_ME_SUBWF_EMAIL_ID` | Workflow-ID des `Sub: Send Offer Email` (nach Import in n8n setzen) |
+| Whitelist-Telefonnummern | im Code-Node `Whitelist + Normalize` (Array `WHITELIST`) |
+| Brand-Daten | im Code-Node `Build HTML` der beiden Sub-Workflows (`COMPANY_NAME`, `COMPANY_ADDRESS`, `COMPANY_TAX_ID`, `COMPANY_LOGO_URL`, `COMPANY_COLOR_HEX`, `COMPANY_CONTACT_EMAIL`, `COMPANY_CONTACT_PHONE`, `COMPANY_WEBSITE`) |
+
+**ERP-API erwartete Endpunkte (Default):**
+- `GET /materials?q=<query>&limit=10` -> Liste `{name, einheit, einzelpreis_eur, kategorie, sku}`
+- `GET /verrechnungssaetze` -> Liste `{position, stundensatz}`
+
+**Meta-Setup (WhatsApp Business Cloud):**
+1. Meta Developer App + WhatsApp-Produkt -> Phone Number ID + Permanent Access Token
+2. Webhook-URL aus n8n Trigger in Meta-Portal als Webhook eintragen
+3. Verify Token muss zu n8n-Trigger-Credential passen
+4. App ggf. fuer den Produktivbetrieb verifizieren lassen
+
+**Import-Reihenfolge in n8n:**
+1. Beide Sub-Workflows zuerst importieren -> n8n vergibt IDs
+2. Main-Workflow importieren
+3. In Main: Beide Tool-Workflow-Nodes oeffnen und die echten Sub-Workflow-IDs auswaehlen (oder im JSON `REPLACE_ME_SUBWF_*_ID` ersetzen)
+4. Credentials zuweisen, Platzhalter ersetzen, **Sub-Workflows aktivieren**, dann Main aktivieren
+
+**Validierung:** Alle drei Workflows wurden via `n8n-mcp validate_workflow` geprueft -> 0 echte Errors. Die einzigen 2 "Errors" in der Main-Validierung waren False Positives (im Validierungs-Stub fehlten Credentials, in der echten Datei sind sie als `REPLACE_ME_*` belegt). Warnings betreffen Error-Handling-Empfehlungen und sind durch `retryOnFail` adressiert.
+
 ## Dateien in diesem Repo
 
 - [`.mcp.json`](./.mcp.json) – Claude Code MCP-Server-Konfiguration
 - [`.env.example`](./.env.example) – Vorlage fuer Environment-Variablen
 - [`.gitignore`](./.gitignore) – schliesst `.env` und lokale Artefakte aus
 - [`workflows/email-classifier.json`](./workflows/email-classifier.json) – Outlook Mail Classifier Workflow
+- [`workflows/whatsapp-offer-bot.json`](./workflows/whatsapp-offer-bot.json) – WhatsApp Offer Bot (Main)
+- [`workflows/whatsapp-offer-bot.sub-send-pdf.json`](./workflows/whatsapp-offer-bot.sub-send-pdf.json) – Sub: PDF + WhatsApp Send
+- [`workflows/whatsapp-offer-bot.sub-send-email.json`](./workflows/whatsapp-offer-bot.sub-send-email.json) – Sub: PDF + Outlook Send
 
 ## Links
 

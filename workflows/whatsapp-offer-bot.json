@@ -1,0 +1,447 @@
+{
+  "name": "WhatsApp Offer Bot - Main",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## WhatsApp Offer Bot – Main\n\n**Flow:**\n1. WhatsApp Trigger (Webhook von Meta Cloud API)\n2. Whitelist-Check (interne Mitarbeiter-Telefonnummern)\n3. Voice -> Whisper Transcribe; Text -> direkt\n4. AI Agent (gpt-4o) mit Memory + 4 Tools:\n   - `lookup_material` (HTTP Tool -> ERP)\n   - `get_verrechnungssaetze` (HTTP Tool -> ERP)\n   - `send_offer_to_whatsapp` (Sub-Workflow)\n   - `send_offer_email` (Sub-Workflow)\n5. Agent-Antwort zurueck per WhatsApp\n\n**Vor Aktivierung setzen:**\n- WhatsApp-Credential `whatsAppApi` + Phone-Number-ID\n- OpenAI-Credential\n- ERP-API-Credential (`httpHeaderAuth` oder OAuth2) + `ERP_BASE_URL`\n- PDFShift-Credential (Header `X-API-Key`)\n- Outlook-Credential (anderes Postfach als Classifier)\n- Whitelist-Telefonnummern in Funktion `Whitelist Check`\n- Workflow-IDs der beiden Sub-Workflows (`Sub: Send Offer WhatsApp`, `Sub: Send Offer Email`) in den Tool-Workflow-Nodes\n\n**Brand-Daten** werden in den Sub-Workflows gesetzt (Logo URL, Farbe, Adresse, USt-IdNr.).",
+        "height": 460,
+        "width": 520
+      },
+      "id": "00000000-0000-0000-0000-000000000001",
+      "name": "README",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-720, -260]
+    },
+    {
+      "parameters": {
+        "updates": ["messages"],
+        "options": {}
+      },
+      "id": "10000000-0000-0000-0000-000000000001",
+      "name": "WhatsApp Trigger",
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [-400, 220],
+      "webhookId": "whatsapp-offer-bot",
+      "credentials": {
+        "whatsAppTriggerApi": {
+          "id": "REPLACE_ME_WA_TRIGGER_CRED",
+          "name": "WhatsApp Trigger (App Verify Token)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// --- Whitelist + Normalisierung ---\n// Erlaubte Telefonnummern (E.164 ohne +)\nconst WHITELIST = [\n  '491701234567',  // Mitarbeiter A\n  '491721234567',  // Mitarbeiter B\n  '491731234567'   // Mitarbeiter C\n];\n\nconst out = [];\nfor (const item of $input.all()) {\n  const data = item.json;\n  // n8n WhatsApp Trigger gibt typischerweise das normalisierte 'messages' Objekt im Webhook-Body zurueck\n  const msg = data.messages?.[0] || data.message || data;\n  const from = (msg.from || data.from || '').toString().replace(/[^0-9]/g, '');\n  if (!WHITELIST.includes(from)) {\n    out.push({\n      json: {\n        allowed: false,\n        from,\n        reason: 'Nummer nicht autorisiert',\n        msg_id: msg.id,\n        type: msg.type\n      }\n    });\n    continue;\n  }\n  out.push({\n    json: {\n      allowed: true,\n      from,\n      msg_id: msg.id,\n      type: msg.type, // 'text' | 'audio' | 'image' | ...\n      text_body: msg.text?.body || '',\n      audio_id: msg.audio?.id || null,\n      audio_mime: msg.audio?.mime_type || null,\n      contact_name: data.contacts?.[0]?.profile?.name || data.profileName || ''\n    }\n  });\n}\nreturn out;"
+      },
+      "id": "10000000-0000-0000-0000-000000000002",
+      "name": "Whitelist + Normalize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-180, 220]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "allowed-cond",
+              "leftValue": "={{ $json.allowed }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "10000000-0000-0000-0000-000000000003",
+      "name": "If Allowed",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [60, 220]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            { "conditions": { "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" }, "conditions": [ { "id": "audio-cond", "leftValue": "={{ $json.type }}", "rightValue": "audio", "operator": { "type": "string", "operation": "equals" } } ], "combinator": "and" }, "renameOutput": false },
+            { "conditions": { "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" }, "conditions": [ { "id": "text-cond", "leftValue": "={{ $json.type }}", "rightValue": "text", "operator": { "type": "string", "operation": "equals" } } ], "combinator": "and" }, "renameOutput": false }
+          ]
+        },
+        "options": { "fallbackOutput": "extra" }
+      },
+      "id": "10000000-0000-0000-0000-000000000004",
+      "name": "Switch Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [300, 140]
+    },
+    {
+      "parameters": {
+        "resource": "media",
+        "operation": "mediaUrlGet",
+        "mediaGetId": "={{ $json.audio_id }}"
+      },
+      "id": "20000000-0000-0000-0000-000000000001",
+      "name": "WA: Get Media URL",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [520, 0],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "REPLACE_ME_WA_CRED",
+          "name": "WhatsApp Business Cloud"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "whatsAppApi",
+        "sendHeaders": false,
+        "sendBody": false,
+        "options": { "response": { "response": { "responseFormat": "file" } } }
+      },
+      "id": "20000000-0000-0000-0000-000000000002",
+      "name": "Download Audio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [740, 0],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "REPLACE_ME_WA_CRED",
+          "name": "WhatsApp Business Cloud"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "binaryPropertyName": "data",
+        "options": { "language": "de" }
+      },
+      "id": "20000000-0000-0000-0000-000000000003",
+      "name": "OpenAI: Whisper Transcribe",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [960, 0],
+      "credentials": {
+        "openAiApi": {
+          "id": "REPLACE_ME_OPENAI_CRED",
+          "name": "OpenAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "msg-text", "name": "user_message", "type": "string", "value": "={{ $json.text }}" },
+            { "id": "msg-from", "name": "from", "type": "string", "value": "={{ $('Whitelist + Normalize').item.json.from }}" },
+            { "id": "msg-name", "name": "contact_name", "type": "string", "value": "={{ $('Whitelist + Normalize').item.json.contact_name }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "20000000-0000-0000-0000-000000000004",
+      "name": "Set: Voice Text",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1180, 0]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "msg-text", "name": "user_message", "type": "string", "value": "={{ $json.text_body }}" },
+            { "id": "msg-from", "name": "from", "type": "string", "value": "={{ $json.from }}" },
+            { "id": "msg-name", "name": "contact_name", "type": "string", "value": "={{ $json.contact_name }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "20000000-0000-0000-0000-000000000005",
+      "name": "Set: Text Body",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [520, 220]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.user_message }}",
+        "options": {
+          "systemMessage": "Du bist ein Assistent fuer interne Mitarbeiter eines Handwerks-/Handelsbetriebs, der Angebote fuer Kunden erstellt.\nDer Mitarbeiter beschreibt dir per Text oder transkribierter Sprachnachricht eine Kundenanfrage.\n\nABLAUF (zwingend):\n1. Wenn die Anfrage unklar ist, frage gezielt nach (Maße, Stueckzahl, Materialart, gewuenschte Qualitaet).\n2. Nutze `lookup_material` mit passenden Suchbegriffen, um Materialien aus dem ERP zu finden. NIEMALS Preise erfinden.\n3. Schlage 1-N Positionen vor mit Menge + Einzelpreis + Summe.\n4. Wenn Arbeitszeit verrechnet werden soll: nutze `get_verrechnungssaetze` und schlage Position + Stunden vor.\n5. Erstelle einen vollstaendigen Angebotsentwurf in deiner Antwort:\n   - Tabelle aller Positionen (Beschreibung, Menge, Einzelpreis, Summe)\n   - Optional Verrechnungspositionen\n   - Zwischensumme, USt 19%, Gesamtsumme\n   - Schliesse exakt mit: 'Soll ich das Angebot so erstellen? (ja/nein)'\n6. NUR bei expliziter Bestaetigung ('ja', 'okay', 'passt', 'erstellen') rufe `send_offer_to_whatsapp` mit der vollstaendigen Angebotsstruktur auf.\n7. Frage danach exakt: 'Soll ich das Angebot zusaetzlich an eine Kunden-Mailadresse senden? Wenn ja, bitte Mailadresse und Kundennamen senden.'\n8. Wenn der Mitarbeiter eine Mailadresse + Kundennamen nennt: rufe `send_offer_email` mit denselben Angebotsdaten + Mailadresse + Kundenname auf.\n9. Bestaetige Abschluss kurz.\n\nSTRENG:\n- Niemals Angebot generieren ohne explizite Bestaetigung.\n- Niemals Preise raten - nur ERP-Daten.\n- Antworte in DE, freundlich aber knapp.\n- Heutiges Datum als Angebotsdatum verwenden, Gueltigkeit 30 Tage.\n- Angebotsnummer Format: 'AN-YYYYMMDD-' + 3-stellige Zufallszahl, du generierst sie selbst und schreibst sie in die Tool-Aufrufe."
+        }
+      },
+      "id": "30000000-0000-0000-0000-000000000001",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [1420, 220]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "gpt-4o"
+        },
+        "options": { "temperature": 0.2 }
+      },
+      "id": "30000000-0000-0000-0000-000000000002",
+      "name": "OpenAI Chat (gpt-4o)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [1180, 460],
+      "credentials": {
+        "openAiApi": {
+          "id": "REPLACE_ME_OPENAI_CRED",
+          "name": "OpenAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.from }}",
+        "contextWindowLength": 20
+      },
+      "id": "30000000-0000-0000-0000-000000000003",
+      "name": "Window Buffer Memory (per Phone)",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [1340, 460]
+    },
+    {
+      "parameters": {
+        "name": "lookup_material",
+        "description": "Sucht passende Materialien im ERP. Liefert Liste mit name, einheit, einzelpreis_eur, kategorie, sku. Nutze gezielte Suchbegriffe (z.B. 'Fliese 30x60 grau').",
+        "method": "GET",
+        "url": "=ERP_BASE_URL/materials",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendQuery": true,
+        "specifyQuery": "keypair",
+        "parametersQuery": {
+          "values": [
+            { "name": "q", "valueProvider": "modelRequired" },
+            { "name": "limit", "valueProvider": "fieldValue", "value": "10" }
+          ]
+        },
+        "optimizeResponse": true
+      },
+      "id": "30000000-0000-0000-0000-000000000004",
+      "name": "Tool: lookup_material",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1500,
+      "position": [1500, 460],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_ME_ERP_CRED",
+          "name": "ERP API (Header Auth)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "get_verrechnungssaetze",
+        "description": "Liefert die aktuellen Verrechnungssaetze (Stundensaetze) je Position aus dem ERP. Aufruf ohne Parameter.",
+        "method": "GET",
+        "url": "=ERP_BASE_URL/verrechnungssaetze",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "optimizeResponse": true
+      },
+      "id": "30000000-0000-0000-0000-000000000005",
+      "name": "Tool: get_verrechnungssaetze",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1500,
+      "position": [1660, 460],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_ME_ERP_CRED",
+          "name": "ERP API (Header Auth)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "send_offer_to_whatsapp",
+        "description": "Erstellt das Angebot als PDF (Firmen-Branding) und sendet es im aktuellen WhatsApp-Chat als Dokument. Aufruf NUR nach expliziter Bestaetigung des Mitarbeiters.",
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_ME_SUBWF_WHATSAPP_ID",
+          "mode": "id",
+          "cachedResultName": "Sub: Send Offer WhatsApp"
+        },
+        "fields": {
+          "values": [
+            { "name": "to", "type": "stringValue", "stringValue": "={{ $('Whitelist + Normalize').item.json.from || $json.from }}" }
+          ]
+        },
+        "specifyInputSchema": true,
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"angebotsnummer\": { \"type\": \"string\" },\n    \"datum\": { \"type\": \"string\", \"description\": \"YYYY-MM-DD\" },\n    \"gueltig_bis\": { \"type\": \"string\", \"description\": \"YYYY-MM-DD\" },\n    \"kunde_name\": { \"type\": \"string\" },\n    \"positionen\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"beschreibung\": { \"type\": \"string\" },\n          \"menge\": { \"type\": \"number\" },\n          \"einheit\": { \"type\": \"string\" },\n          \"einzelpreis\": { \"type\": \"number\" }\n        },\n        \"required\": [\"beschreibung\", \"menge\", \"einheit\", \"einzelpreis\"]\n      }\n    },\n    \"verrechnungen\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"position\": { \"type\": \"string\" },\n          \"stunden\": { \"type\": \"number\" },\n          \"stundensatz\": { \"type\": \"number\" }\n        },\n        \"required\": [\"position\", \"stunden\", \"stundensatz\"]\n      }\n    }\n  },\n  \"required\": [\"angebotsnummer\", \"datum\", \"gueltig_bis\", \"kunde_name\", \"positionen\"]\n}"
+      },
+      "id": "30000000-0000-0000-0000-000000000006",
+      "name": "Tool: send_offer_to_whatsapp",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [1820, 460]
+    },
+    {
+      "parameters": {
+        "name": "send_offer_email",
+        "description": "Erstellt das Angebot als PDF und sendet es per Mail an die angegebene Kundenadresse mit dem festen Template-Text 'Lieber Kunde, hier ist Ihr Angebot...'. Aufruf nur nach Mailadressen-Angabe durch den Mitarbeiter.",
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_ME_SUBWF_EMAIL_ID",
+          "mode": "id",
+          "cachedResultName": "Sub: Send Offer Email"
+        },
+        "specifyInputSchema": true,
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"angebotsnummer\": { \"type\": \"string\" },\n    \"datum\": { \"type\": \"string\" },\n    \"gueltig_bis\": { \"type\": \"string\" },\n    \"kunde_name\": { \"type\": \"string\" },\n    \"kunde_email\": { \"type\": \"string\" },\n    \"positionen\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"beschreibung\": { \"type\": \"string\" },\n          \"menge\": { \"type\": \"number\" },\n          \"einheit\": { \"type\": \"string\" },\n          \"einzelpreis\": { \"type\": \"number\" }\n        },\n        \"required\": [\"beschreibung\", \"menge\", \"einheit\", \"einzelpreis\"]\n      }\n    },\n    \"verrechnungen\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"position\": { \"type\": \"string\" },\n          \"stunden\": { \"type\": \"number\" },\n          \"stundensatz\": { \"type\": \"number\" }\n        },\n        \"required\": [\"position\", \"stunden\", \"stundensatz\"]\n      }\n    }\n  },\n  \"required\": [\"angebotsnummer\", \"datum\", \"gueltig_bis\", \"kunde_name\", \"kunde_email\", \"positionen\"]\n}"
+      },
+      "id": "30000000-0000-0000-0000-000000000007",
+      "name": "Tool: send_offer_email",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [1980, 460]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": {
+          "__rl": true,
+          "value": "REPLACE_ME_PHONE_NUMBER_ID",
+          "mode": "id"
+        },
+        "recipientPhoneNumber": "={{ $('Whitelist + Normalize').item.json.from }}",
+        "messageType": "text",
+        "textBody": "={{ $json.output }}"
+      },
+      "id": "40000000-0000-0000-0000-000000000001",
+      "name": "WA: Send Reply",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [1820, 220],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "REPLACE_ME_WA_CRED",
+          "name": "WhatsApp Business Cloud"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": {
+          "__rl": true,
+          "value": "REPLACE_ME_PHONE_NUMBER_ID",
+          "mode": "id"
+        },
+        "recipientPhoneNumber": "={{ $json.from }}",
+        "messageType": "text",
+        "textBody": "Diese Nummer ist nicht autorisiert. Bitte wende dich an deinen Admin."
+      },
+      "id": "40000000-0000-0000-0000-000000000002",
+      "name": "WA: Reject (Not Authorized)",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [300, 380],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "REPLACE_ME_WA_CRED",
+          "name": "WhatsApp Business Cloud"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "WhatsApp Trigger": {
+      "main": [[{ "node": "Whitelist + Normalize", "type": "main", "index": 0 }]]
+    },
+    "Whitelist + Normalize": {
+      "main": [[{ "node": "If Allowed", "type": "main", "index": 0 }]]
+    },
+    "If Allowed": {
+      "main": [
+        [{ "node": "Switch Type", "type": "main", "index": 0 }],
+        [{ "node": "WA: Reject (Not Authorized)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Switch Type": {
+      "main": [
+        [{ "node": "WA: Get Media URL", "type": "main", "index": 0 }],
+        [{ "node": "Set: Text Body", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "WA: Get Media URL": {
+      "main": [[{ "node": "Download Audio", "type": "main", "index": 0 }]]
+    },
+    "Download Audio": {
+      "main": [[{ "node": "OpenAI: Whisper Transcribe", "type": "main", "index": 0 }]]
+    },
+    "OpenAI: Whisper Transcribe": {
+      "main": [[{ "node": "Set: Voice Text", "type": "main", "index": 0 }]]
+    },
+    "Set: Voice Text": {
+      "main": [[{ "node": "AI Agent", "type": "main", "index": 0 }]]
+    },
+    "Set: Text Body": {
+      "main": [[{ "node": "AI Agent", "type": "main", "index": 0 }]]
+    },
+    "OpenAI Chat (gpt-4o)": {
+      "ai_languageModel": [[{ "node": "AI Agent", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "Window Buffer Memory (per Phone)": {
+      "ai_memory": [[{ "node": "AI Agent", "type": "ai_memory", "index": 0 }]]
+    },
+    "Tool: lookup_material": {
+      "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "Tool: get_verrechnungssaetze": {
+      "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "Tool: send_offer_to_whatsapp": {
+      "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "Tool: send_offer_email": {
+      "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "AI Agent": {
+      "main": [[{ "node": "WA: Send Reply", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "meta": { "templateCredsSetupCompleted": false },
+  "tags": [
+    { "name": "whatsapp" },
+    { "name": "offer-bot" }
+  ]
+}

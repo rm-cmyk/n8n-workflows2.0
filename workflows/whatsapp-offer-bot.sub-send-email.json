@@ -1,0 +1,126 @@
+{
+  "name": "Sub: Send Offer Email",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Sub: Send Offer Email\n\nWird vom Main-Workflow als Tool aufgerufen.\n\n**Input (vom AI Agent):**\n```json\n{\n  \"angebotsnummer\": \"AN-20260426-123\",\n  \"datum\": \"2026-04-26\",\n  \"gueltig_bis\": \"2026-05-26\",\n  \"kunde_name\": \"Max Mustermann\",\n  \"kunde_email\": \"max@example.com\",\n  \"positionen\": [...],\n  \"verrechnungen\": [...]\n}\n```\n\n**Schritte:**\n1. HTML aus Template + Brand-Daten bauen\n2. PDFShift -> PDF binary\n3. Outlook (anderes Postfach) sendet Mail mit PDF-Anhang\n   - Festes Template: 'Lieber Kunde, hier ist Ihr Angebot...'\n\n**Vor Aktivierung setzen:**\n- PDFShift Credential\n- Outlook Credential (anderes Postfach als Email-Classifier)\n- Brand-Daten im Code Node",
+        "height": 320,
+        "width": 520
+      },
+      "id": "00000000-0000-0000-0000-000000000001",
+      "name": "README",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-720, -260]
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "10000000-0000-0000-0000-000000000001",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [-400, 220]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// --- Brand-Daten (anpassen, identisch zu Sub: Send Offer WhatsApp) ---\nconst BRAND = {\n  name: 'COMPANY_NAME',\n  address: 'COMPANY_ADDRESS',\n  tax_id: 'COMPANY_TAX_ID',\n  logo_url: 'COMPANY_LOGO_URL',\n  color: 'COMPANY_COLOR_HEX',\n  email: 'COMPANY_CONTACT_EMAIL',\n  phone: 'COMPANY_CONTACT_PHONE',\n  website: 'COMPANY_WEBSITE'\n};\nconst USt_PROZENT = 19;\n\nconst input = $input.first().json;\nconst positionen = input.positionen || [];\nconst verrechnungen = input.verrechnungen || [];\n\nconst eur = (n) => Number(n).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });\n\nlet zwischensumme = 0;\nconst posRows = positionen.map((p, i) => {\n  const summe = (Number(p.menge) || 0) * (Number(p.einzelpreis) || 0);\n  zwischensumme += summe;\n  return `<tr>\n    <td>${i+1}</td>\n    <td>${p.beschreibung}</td>\n    <td style=\"text-align:right\">${Number(p.menge).toLocaleString('de-DE')}</td>\n    <td>${p.einheit}</td>\n    <td style=\"text-align:right\">${eur(p.einzelpreis)} EUR</td>\n    <td style=\"text-align:right\">${eur(summe)} EUR</td>\n  </tr>`;\n}).join('');\n\nconst verrRows = verrechnungen.map((v, i) => {\n  const summe = (Number(v.stunden) || 0) * (Number(v.stundensatz) || 0);\n  zwischensumme += summe;\n  return `<tr>\n    <td>V${i+1}</td>\n    <td>${v.position}</td>\n    <td style=\"text-align:right\">${Number(v.stunden).toLocaleString('de-DE')}</td>\n    <td>Std</td>\n    <td style=\"text-align:right\">${eur(v.stundensatz)} EUR</td>\n    <td style=\"text-align:right\">${eur(summe)} EUR</td>\n  </tr>`;\n}).join('');\n\nconst ust = zwischensumme * USt_PROZENT / 100;\nconst gesamt = zwischensumme + ust;\n\nconst html = `<!doctype html>\n<html lang=\"de\"><head>\n<meta charset=\"utf-8\" />\n<title>Angebot ${input.angebotsnummer}</title>\n<style>\n  body { font-family: 'Helvetica', Arial, sans-serif; color: #222; padding: 32px; font-size: 11pt; }\n  .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid ${BRAND.color}; padding-bottom: 16px; margin-bottom: 24px; }\n  .header img { max-height: 60px; }\n  .company { text-align: right; font-size: 9pt; color: #555; }\n  h1 { color: ${BRAND.color}; margin: 0 0 8px 0; }\n  .meta { display: flex; justify-content: space-between; margin: 16px 0; font-size: 10pt; }\n  table.items { width: 100%; border-collapse: collapse; margin-top: 16px; }\n  table.items th { background: ${BRAND.color}; color: #fff; text-align: left; padding: 8px; font-size: 10pt; }\n  table.items td { border-bottom: 1px solid #eee; padding: 8px; vertical-align: top; }\n  table.items tr:nth-child(even) td { background: #f8f8f8; }\n  .totals { width: 320px; margin-left: auto; margin-top: 16px; font-size: 11pt; }\n  .totals .row { display: flex; justify-content: space-between; padding: 4px 0; }\n  .totals .row.total { border-top: 2px solid ${BRAND.color}; font-weight: bold; font-size: 13pt; padding-top: 8px; margin-top: 8px; }\n  .footer { margin-top: 48px; font-size: 9pt; color: #555; border-top: 1px solid #ddd; padding-top: 12px; }\n</style></head><body>\n  <div class=\"header\">\n    <div><img src=\"${BRAND.logo_url}\" alt=\"Logo\" /></div>\n    <div class=\"company\">\n      <strong>${BRAND.name}</strong><br>\n      ${BRAND.address}<br>\n      USt-IdNr.: ${BRAND.tax_id}<br>\n      ${BRAND.email} &middot; ${BRAND.phone}\n    </div>\n  </div>\n  <h1>Angebot ${input.angebotsnummer}</h1>\n  <div class=\"meta\">\n    <div><strong>Kunde:</strong> ${input.kunde_name}</div>\n    <div><strong>Datum:</strong> ${input.datum} &nbsp; <strong>Gueltig bis:</strong> ${input.gueltig_bis}</div>\n  </div>\n  <table class=\"items\">\n    <thead><tr><th>Pos</th><th>Beschreibung</th><th>Menge</th><th>Einheit</th><th>Einzelpreis</th><th>Summe</th></tr></thead>\n    <tbody>${posRows}${verrRows}</tbody>\n  </table>\n  <div class=\"totals\">\n    <div class=\"row\"><span>Zwischensumme</span><span>${eur(zwischensumme)} EUR</span></div>\n    <div class=\"row\"><span>USt ${USt_PROZENT}%</span><span>${eur(ust)} EUR</span></div>\n    <div class=\"row total\"><span>Gesamtsumme</span><span>${eur(gesamt)} EUR</span></div>\n  </div>\n  <div class=\"footer\">\n    Zahlungsbedingungen: 14 Tage netto. Es gelten unsere AGB. Dieses Angebot ist gueltig bis ${input.gueltig_bis}.<br>\n    ${BRAND.name} &middot; ${BRAND.website}\n  </div>\n</body></html>`;\n\nconst mailHtml = `<p>Lieber Kunde,</p>\n<p>hier ist Ihr Angebot <strong>${input.angebotsnummer}</strong> vom ${input.datum}, gueltig bis ${input.gueltig_bis}.</p>\n<p>Bei Fragen oder zur Auftragserteilung antworten Sie einfach auf diese Mail oder rufen uns an.</p>\n<p>Freundliche Gruesse<br>Ihr Team von ${BRAND.name}</p>`;\n\nreturn [{ json: {\n  html,\n  mailHtml,\n  angebotsnummer: input.angebotsnummer,\n  filename: `Angebot_${input.angebotsnummer}.pdf`,\n  kunde_name: input.kunde_name,\n  kunde_email: input.kunde_email,\n  betreff: `Angebot ${input.angebotsnummer} - ${BRAND.name}`\n} }];"
+      },
+      "id": "20000000-0000-0000-0000-000000000001",
+      "name": "Build HTML + Mail Body",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-180, 220]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.pdfshift.io/v3/convert/pdf",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ source: $json.html, landscape: false, format: 'A4' }) }}",
+        "options": { "response": { "response": { "responseFormat": "file", "outputPropertyName": "data" } } }
+      },
+      "id": "20000000-0000-0000-0000-000000000002",
+      "name": "PDFShift: Render PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [80, 220],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_ME_PDFSHIFT_CRED",
+          "name": "PDFShift API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "subject": "={{ $('Build HTML + Mail Body').item.json.betreff }}",
+        "bodyContent": "={{ $('Build HTML + Mail Body').item.json.mailHtml }}",
+        "toRecipients": "={{ $('Build HTML + Mail Body').item.json.kunde_email }}",
+        "additionalFields": {
+          "bodyContentType": "html",
+          "attachmentsUi": {
+            "attachmentsBinary": [
+              { "property": "data" }
+            ]
+          }
+        }
+      },
+      "id": "20000000-0000-0000-0000-000000000003",
+      "name": "Outlook: Send Mail with PDF",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [320, 220],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "REPLACE_ME_OUTLOOK_OFFER_CRED",
+          "name": "Microsoft Outlook (Offer Mailbox)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "ok", "name": "ok", "type": "boolean", "value": true },
+            { "id": "msg", "name": "message", "type": "string", "value": "=Angebot {{ $('Build HTML + Mail Body').item.json.angebotsnummer }} per Mail an {{ $('Build HTML + Mail Body').item.json.kunde_email }} gesendet." }
+          ]
+        },
+        "options": {}
+      },
+      "id": "20000000-0000-0000-0000-000000000004",
+      "name": "Tool Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [560, 220]
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": { "main": [[{ "node": "Build HTML + Mail Body", "type": "main", "index": 0 }]] },
+    "Build HTML + Mail Body": { "main": [[{ "node": "PDFShift: Render PDF", "type": "main", "index": 0 }]] },
+    "PDFShift: Render PDF": { "main": [[{ "node": "Outlook: Send Mail with PDF", "type": "main", "index": 0 }]] },
+    "Outlook: Send Mail with PDF": { "main": [[{ "node": "Tool Response", "type": "main", "index": 0 }]] }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "meta": { "templateCredsSetupCompleted": false },
+  "tags": [{ "name": "whatsapp" }, { "name": "offer-bot" }, { "name": "sub" }]
+}
