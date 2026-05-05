@@ -17,3 +17,6 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# Lokale Projekt-Sandbox (nicht im Repo verwalten)
+galabau-offer-bot/
