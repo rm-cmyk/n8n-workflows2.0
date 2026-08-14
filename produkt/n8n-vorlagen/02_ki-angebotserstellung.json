@@ -1,0 +1,132 @@
+{
+  "name": "02 - KI Angebotserstellung aus Sprachnotiz",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sprachnotiz-angebot",
+        "responseMode": "onReceived",
+        "options": { "binaryData": true }
+      },
+      "id": "webhook-audio",
+      "name": "Sprachnotiz hochgeladen",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 300],
+      "webhookId": "sprachnotiz-webhook",
+      "notes": "Nimmt eine Audiodatei entgegen, z.B. aus einer WhatsApp-Sprachnachricht oder einer Handy-App-Weiterleitung."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/audio/transcriptions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            { "parameterType": "formBinaryData", "name": "file", "inputDataFieldName": "data" },
+            { "name": "model", "value": "whisper-1" },
+            { "name": "language", "value": "de" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "transkription",
+      "name": "Sprache zu Text",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 300],
+      "notes": "API-Key für den Transkriptionsdienst nach Import als HTTP Header Auth (Header: Authorization, Wert: Bearer <KEY>) hinterlegen."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "content-type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-sonnet-4-5\",\n  \"max_tokens\": 800,\n  \"system\": \"Du erstellst aus einer diktierten Baustellen-Notiz eines Handwerks- oder GaLaBau-Betriebs einen strukturierten Angebotsentwurf. Gib ausschließlich JSON zurück mit: kunde, adresse, positionen (Liste aus {bezeichnung, menge, einheit}), hinweise.\",\n  \"messages\": [{\"role\": \"user\", \"content\": {{ JSON.stringify($json.text) }} }]\n}",
+        "options": {}
+      },
+      "id": "ki-strukturierung",
+      "name": "KI: Angebot strukturieren",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 300],
+      "notes": "Eigenen API-Key hinterlegen. In der Praxis empfiehlt es sich, die betriebseigene Preisliste als zusätzlichen Kontext in den 'system'-Text mit aufzunehmen."
+    },
+    {
+      "parameters": {
+        "jsonMode": "expressionData",
+        "jsonOutput": "={{ JSON.parse($json.content[0].text) }}",
+        "options": {}
+      },
+      "id": "set-parsed",
+      "name": "Angebot übernehmen",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [880, 300]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": { "mode": "list", "value": "SPREADSHEET_ID" },
+        "sheetName": { "mode": "list", "value": "Angebotsentwürfe" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Kunde": "={{ $json.kunde }}",
+            "Adresse": "={{ $json.adresse }}",
+            "Positionen": "={{ JSON.stringify($json.positionen) }}",
+            "Hinweise": "={{ $json.hinweise }}",
+            "Erstellt": "={{ $now.toISO() }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "sheet-entwurf",
+      "name": "Als Entwurf ablegen",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [1100, 220],
+      "notes": "Alternativ direkt an eine Angebots-/Kalkulationssoftware per API übergeben, statt in eine Tabelle zu schreiben."
+    },
+    {
+      "parameters": {
+        "fromEmail": "buero@betrieb.example",
+        "toEmail": "buero@betrieb.example",
+        "subject": "=Angebotsentwurf bereit: {{ $json.kunde }}",
+        "text": "=Ein neuer Angebotsentwurf wartet auf Prüfung.\n\nKunde: {{ $json.kunde }}\nAdresse: {{ $json.adresse }}\nPositionen: {{ JSON.stringify($json.positionen) }}\nHinweise: {{ $json.hinweise }}",
+        "options": {}
+      },
+      "id": "mail-review",
+      "name": "Zur Prüfung an Büro senden",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [1100, 400],
+      "notes": "Der Entwurf geht immer zuerst an einen Menschen zur Prüfung, bevor er den Betrieb verlässt."
+    }
+  ],
+  "connections": {
+    "Sprachnotiz hochgeladen": { "main": [[{ "node": "Sprache zu Text", "type": "main", "index": 0 }]] },
+    "Sprache zu Text": { "main": [[{ "node": "KI: Angebot strukturieren", "type": "main", "index": 0 }]] },
+    "KI: Angebot strukturieren": { "main": [[{ "node": "Angebot übernehmen", "type": "main", "index": 0 }]] },
+    "Angebot übernehmen": { "main": [[{ "node": "Als Entwurf ablegen", "type": "main", "index": 0 }, { "node": "Zur Prüfung an Büro senden", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "templateSource": "KI-Kompass Handwerk & GaLaBau - Praxis-Leitfaden",
+    "beschreibung": "Vorlage: Wandelt eine diktierte Sprachnotiz vom Baustellentermin in einen strukturierten Angebotsentwurf um und legt ihn dem Büro zur Prüfung vor. Angebot geht nie ungeprüft an den Kunden."
+  }
+}

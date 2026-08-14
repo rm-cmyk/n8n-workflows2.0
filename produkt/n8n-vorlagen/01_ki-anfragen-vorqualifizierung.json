@@ -1,0 +1,135 @@
+{
+  "name": "01 - KI Anfragen-Vorqualifizierung",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "neue-anfrage",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Neue Anfrage (Formular/WhatsApp)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "neue-anfrage-webhook",
+      "notes": "Empfängt eingehende Anfragen aus Website-Formular, WhatsApp Business API oder E-Mail-Weiterleitung. URL nach Import unter 'Webhooks' kopieren und im Formular/WhatsApp-Anbieter hinterlegen."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "content-type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-sonnet-4-5\",\n  \"max_tokens\": 400,\n  \"system\": \"Du bist die Büro-Assistenz eines Handwerks- bzw. GaLaBau-Betriebs. Extrahiere aus der Kundenanfrage: Name, Adresse/PLZ, Gewerk (z.B. Pflasterarbeiten, Heizung, Elektro), gewünschte Leistung in 1 Satz, und Dringlichkeit (niedrig/mittel/hoch). Antworte ausschließlich als JSON mit den Feldern name, plz, gewerk, leistung, dringlichkeit.\",\n  \"messages\": [{\"role\": \"user\", \"content\": {{ JSON.stringify($json.nachricht) }} }]\n}",
+        "options": {}
+      },
+      "id": "ki-extraktion",
+      "name": "KI: Anfrage strukturieren",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300],
+      "notes": "Zugangsdaten (API-Key) nach Import unter 'Credentials' als HTTP Header Auth (Header: x-api-key) hinterlegen. Alternativ auf OpenAI oder ein lokales Modell umstellen."
+    },
+    {
+      "parameters": {
+        "jsonMode": "expressionData",
+        "jsonOutput": "={{ JSON.parse($json.content[0].text) }}",
+        "options": {}
+      },
+      "id": "set-parsed",
+      "name": "Felder übernehmen",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.dringlichkeit }}",
+              "rightValue": "hoch",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-dringend",
+      "name": "Dringend?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "buero@betrieb.example",
+        "toEmail": "buero@betrieb.example",
+        "subject": "=[DRINGEND] Neue Anfrage: {{ $json.gewerk }} in {{ $json.plz }}",
+        "text": "=Name: {{ $json.name }}\nPLZ: {{ $json.plz }}\nGewerk: {{ $json.gewerk }}\nLeistung: {{ $json.leistung }}\nDringlichkeit: {{ $json.dringlichkeit }}",
+        "options": {}
+      },
+      "id": "mail-dringend",
+      "name": "Büro sofort benachrichtigen",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [1120, 200],
+      "notes": "SMTP-Zugangsdaten nach Import hinterlegen. Alternativ gegen einen Slack- oder WhatsApp-Node austauschen."
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": { "mode": "list", "value": "SPREADSHEET_ID" },
+        "sheetName": { "mode": "list", "value": "Anfragen" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{ $json.name }}",
+            "PLZ": "={{ $json.plz }}",
+            "Gewerk": "={{ $json.gewerk }}",
+            "Leistung": "={{ $json.leistung }}",
+            "Dringlichkeit": "={{ $json.dringlichkeit }}",
+            "Eingegangen": "={{ $now.toISO() }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "sheet-log",
+      "name": "In Anfragen-Liste eintragen",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [1120, 400],
+      "notes": "Google-Konto verbinden und eine eigene Tabellen-ID (SPREADSHEET_ID) mit Tabellenblatt 'Anfragen' hinterlegen. Alternativ gegen ein CRM ersetzen."
+    }
+  ],
+  "connections": {
+    "Neue Anfrage (Formular/WhatsApp)": { "main": [[{ "node": "KI: Anfrage strukturieren", "type": "main", "index": 0 }]] },
+    "KI: Anfrage strukturieren": { "main": [[{ "node": "Felder übernehmen", "type": "main", "index": 0 }]] },
+    "Felder übernehmen": { "main": [[{ "node": "Dringend?", "type": "main", "index": 0 }]] },
+    "Dringend?": {
+      "main": [
+        [{ "node": "Büro sofort benachrichtigen", "type": "main", "index": 0 }, { "node": "In Anfragen-Liste eintragen", "type": "main", "index": 0 }],
+        [{ "node": "In Anfragen-Liste eintragen", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "templateSource": "KI-Kompass Handwerk & GaLaBau - Praxis-Leitfaden",
+    "beschreibung": "Vorlage: Nimmt eingehende Anfragen entgegen, lässt die KI Gewerk/PLZ/Dringlichkeit extrahieren und benachrichtigt bei dringenden Fällen sofort das Büro. Nach dem Import: eigene Zugangsdaten (API-Key, E-Mail, Google Sheet) hinterlegen."
+  }
+}

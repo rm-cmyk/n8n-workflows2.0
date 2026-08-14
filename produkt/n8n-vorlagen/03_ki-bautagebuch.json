@@ -1,0 +1,118 @@
+{
+  "name": "03 - KI Bautagebuch per Sprache",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "bautagebuch-notiz",
+        "responseMode": "onReceived",
+        "options": { "binaryData": true }
+      },
+      "id": "webhook-audio",
+      "name": "Sprachnotiz vom Kolonnenführer",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 300],
+      "webhookId": "bautagebuch-webhook",
+      "notes": "Erwartet Audiodatei plus Baustellen-Kennung, z.B. als Formularfeld 'baustelle_id' im selben Upload."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/audio/transcriptions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            { "parameterType": "formBinaryData", "name": "file", "inputDataFieldName": "data" },
+            { "name": "model", "value": "whisper-1" },
+            { "name": "language", "value": "de" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "transkription",
+      "name": "Sprache zu Text",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 300],
+      "notes": "API-Key nach Import als HTTP Header Auth hinterlegen."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "content-type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-sonnet-4-5\",\n  \"max_tokens\": 500,\n  \"system\": \"Du erstellst aus einer gesprochenen Baustellen-Notiz einen strukturierten Tagesbericht. Gib ausschließlich JSON zurück mit: datum, wetter, anwesende_gewerke, taetigkeiten, materialverbrauch, besonderheiten.\",\n  \"messages\": [{\"role\": \"user\", \"content\": {{ JSON.stringify($json.text) }} }]\n}",
+        "options": {}
+      },
+      "id": "ki-strukturierung",
+      "name": "KI: Tagesbericht strukturieren",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "jsonMode": "expressionData",
+        "jsonOutput": "={{ JSON.parse($json.content[0].text) }}",
+        "options": {}
+      },
+      "id": "set-parsed",
+      "name": "Bericht übernehmen",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [880, 300]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": { "mode": "list", "value": "SPREADSHEET_ID" },
+        "sheetName": { "mode": "list", "value": "Bautagebuch" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Baustelle": "={{ $('Sprachnotiz vom Kolonnenführer').item.json.baustelle_id }}",
+            "Datum": "={{ $json.datum }}",
+            "Wetter": "={{ $json.wetter }}",
+            "Gewerke": "={{ $json.anwesende_gewerke }}",
+            "Taetigkeiten": "={{ $json.taetigkeiten }}",
+            "Material": "={{ $json.materialverbrauch }}",
+            "Besonderheiten": "={{ $json.besonderheiten }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "sheet-log",
+      "name": "Im Bautagebuch ablegen",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [1100, 300],
+      "notes": "Alternativ in eine Projektmanagement- oder Dokumentationssoftware statt in eine Tabelle schreiben."
+    }
+  ],
+  "connections": {
+    "Sprachnotiz vom Kolonnenführer": { "main": [[{ "node": "Sprache zu Text", "type": "main", "index": 0 }]] },
+    "Sprache zu Text": { "main": [[{ "node": "KI: Tagesbericht strukturieren", "type": "main", "index": 0 }]] },
+    "KI: Tagesbericht strukturieren": { "main": [[{ "node": "Bericht übernehmen", "type": "main", "index": 0 }]] },
+    "Bericht übernehmen": { "main": [[{ "node": "Im Bautagebuch ablegen", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "templateSource": "KI-Kompass Handwerk & GaLaBau - Praxis-Leitfaden",
+    "beschreibung": "Vorlage: Verwandelt eine gesprochene Baustellen-Notiz in einen strukturierten, durchsuchbaren Tagesbericht — ersetzt das Klemmbrett."
+  }
+}

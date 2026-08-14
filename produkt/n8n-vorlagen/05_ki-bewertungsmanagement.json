@@ -1,0 +1,127 @@
+{
+  "name": "05 - KI Bewertungsmanagement",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "auftrag-abgeschlossen",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-abschluss",
+      "name": "Auftrag abgeschlossen",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 260],
+      "webhookId": "auftrag-abgeschlossen-webhook",
+      "notes": "Wird ausgelöst, sobald ein Auftrag im Betrieb als abgeschlossen markiert wird (z.B. aus der Angebots-/Rechnungssoftware oder per einfachem Formular)."
+    },
+    {
+      "parameters": {
+        "amount": 3,
+        "unit": "days"
+      },
+      "id": "wait-node",
+      "name": "3 Tage warten",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [420, 260],
+      "notes": "Bewertungsanfragen wirken unmittelbar nach Fertigstellung aufdringlich. Ein paar Tage Abstand erhöhen die Rücklaufquote."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v20.0/PHONE_NUMBER_ID/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": {{ JSON.stringify($json.telefonnummer) }},\n  \"type\": \"text\",\n  \"text\": { \"body\": \"Guten Tag {{ $json.kunde }}, wir hoffen, Sie sind mit unserer Arbeit zufrieden. Über eine kurze Google-Bewertung würden wir uns sehr freuen: GOOGLE_REVIEW_LINK\" }\n}",
+        "options": {}
+      },
+      "id": "request-review",
+      "name": "Bewertungsbitte senden",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [640, 260],
+      "notes": "GOOGLE_REVIEW_LINK durch den echten Google-Bewertungslink des Betriebs ersetzen. WhatsApp-Zugangsdaten hinterlegen."
+    },
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "hours", "hoursInterval": 6 }] }
+      },
+      "id": "schedule-poll",
+      "name": "Alle 6 Std. neue Bewertungen prüfen",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [200, 460]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://mybusinessbusinessinformation.googleapis.com/v1/GOOGLE_LOCATION_ID/reviews",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "fetch-reviews",
+      "name": "Neue Google-Bewertungen abrufen",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [420, 460],
+      "notes": "Erfordert Zugriff auf die Google Business Profile API und die eigene GOOGLE_LOCATION_ID. Alternativ einen Bewertungs-Monitoring-Dienst per Webhook einbinden."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "content-type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-sonnet-4-5\",\n  \"max_tokens\": 300,\n  \"system\": \"Du formulierst für einen Handwerks-/GaLaBau-Betrieb eine freundliche, persönliche Antwort auf eine Google-Bewertung. Kurz, konkret, ohne Floskeln.\",\n  \"messages\": [{\"role\": \"user\", \"content\": {{ JSON.stringify($json.comment) }} }]\n}",
+        "options": {}
+      },
+      "id": "ki-antwortentwurf",
+      "name": "KI: Antwortentwurf erstellen",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [640, 460]
+    },
+    {
+      "parameters": {
+        "fromEmail": "buero@betrieb.example",
+        "toEmail": "buero@betrieb.example",
+        "subject": "=Neue Bewertung — Antwortentwurf zur Freigabe",
+        "text": "=Bewertung: {{ $('Neue Google-Bewertungen abrufen').item.json.comment }}\n\nVorgeschlagene Antwort:\n{{ $json.content[0].text }}\n\nBitte prüfen und freigeben, bevor die Antwort veröffentlicht wird.",
+        "options": {}
+      },
+      "id": "mail-freigabe",
+      "name": "Zur Freigabe senden",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [860, 460],
+      "notes": "Antworten auf Bewertungen gehen immer zuerst an einen Menschen zur Freigabe — nie vollautomatisch veröffentlichen."
+    }
+  ],
+  "connections": {
+    "Auftrag abgeschlossen": { "main": [[{ "node": "3 Tage warten", "type": "main", "index": 0 }]] },
+    "3 Tage warten": { "main": [[{ "node": "Bewertungsbitte senden", "type": "main", "index": 0 }]] },
+    "Alle 6 Std. neue Bewertungen prüfen": { "main": [[{ "node": "Neue Google-Bewertungen abrufen", "type": "main", "index": 0 }]] },
+    "Neue Google-Bewertungen abrufen": { "main": [[{ "node": "KI: Antwortentwurf erstellen", "type": "main", "index": 0 }]] },
+    "KI: Antwortentwurf erstellen": { "main": [[{ "node": "Zur Freigabe senden", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "templateSource": "KI-Kompass Handwerk & GaLaBau - Praxis-Leitfaden",
+    "beschreibung": "Vorlage: Bittet nach Auftragsabschluss automatisch um eine Google-Bewertung und erstellt für neue Bewertungen einen Antwortentwurf zur menschlichen Freigabe."
+  }
+}
