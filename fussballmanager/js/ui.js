@@ -12,7 +12,7 @@
   UI.ovr = function (v) { return '<span class="ovr">' + v + '</span>'; };
   UI.starsN = function (pot) { return pot >= 86 ? 5 : pot >= 79 ? 4 : pot >= 72 ? 3 : pot >= 64 ? 2 : 1; };
   UI.stars = function (pot) { const n = UI.starsN(pot); return '<span class="stars" title="Talent: ' + n + ' von 5">' + '★'.repeat(n) + '<i>' + '★'.repeat(5 - n) + '</i></span>'; };
-  UI.bar = function (v, wide) { v = Math.round(U.clamp(v, 0, 100)); return '<span class="bar ' + (v < 55 ? 'low' : v < 75 ? 'mid' : '') + (wide ? ' wide' : '') + '" title="' + v + ' %"><i style="width:' + v + '%"></i></span>'; };
+  UI.bar = function (v, wide) { v = Math.round(U.clamp(v, 0, 100)); return '<span class="bar ' + (v < 45 ? 'low' : v < 62 ? 'mid' : '') + (wide ? ' wide' : '') + '" title="' + v + ' %"><i style="width:' + v + '%"></i></span>'; };
   UI.formTxt = function (f) { return f >= 70 ? '<span class="good" title="Form: stark">▲▲</span>' : f >= 57 ? '<span class="good" title="Form: gut">▲</span>' : f >= 43 ? '<span class="muted" title="Form: normal">●</span>' : f >= 30 ? '<span class="bad" title="Form: schwach">▼</span>' : '<span class="bad" title="Form: Krise">▼▼</span>'; };
   UI.nat = function (n) { return '<abbr title="' + h(FM.NAT_NAME[n] || n) + '" style="text-decoration:none">' + h(n) + '</abbr>'; };
   UI.status = function (p) {
@@ -69,7 +69,7 @@
     let html;
     const fn = UI.V[UI.view] || UI.V.start;
     if (!UI.world || UI.view === 'start' || UI.view === 'new') html = fn();
-    else if (UI.V[UI.view].bare) html = fn();
+    else if (fn.bare) html = fn();
     else html = shell(fn());
     app.innerHTML = html;
     const m2 = $('.main'); if (m2 && UI.scrollTop) m2.scrollTop = UI.scrollTop;
@@ -273,6 +273,13 @@
       setTimeout(() => URL.revokeObjectURL(url), 2000); UI.toast('Download gestartet. Falls nichts passiert: „In die Zwischenablage kopieren“ nutzen.');
     } catch (e) { UI.toast('Der Download ist hier nicht möglich – bitte die Zwischenablage nutzen.'); }
   };
+  /* ---------- Start der Anwendung ---------- */
+  UI.boot = function (snap) {
+    if (snap && snap.save) { const r = FM.Save.parse(snap.save); if (!r.err) { UI.world = r.world; FM.R.use(UI.world); UI.view = UI.world.sacked ? 'sacked' : (snap.view && UI.V[snap.view] && !UI.V[snap.view].bare && snap.view !== 'start' && snap.view !== 'new' ? snap.view : 'office'); } }
+    UI.render();
+  };
+  UI.snapshot = function () { return UI.world ? { save: FM.Save.serialize(UI.world), view: UI.view } : {}; };
+
   UI.A.copySave = async () => {
     const text = FM.Save.serialize(UI.world);
     try { await navigator.clipboard.writeText(text); UI.toast('Spielstand kopiert. In eine Textdatei einfügen und aufbewahren.'); }

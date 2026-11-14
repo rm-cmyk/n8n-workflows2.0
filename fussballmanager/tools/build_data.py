@@ -17,55 +17,55 @@ SEASON = 2026
 # en-Wikipedia-Titel -> (id, Name, Kurzname, Stadt, Farben, Kaderniveau, Zuschauer-Nachfrage relativ zur Kapazität, Fan-Bonus)
 CLUBS = {
     'FC Bayern Munich': ('FCB', 'FC Bayern München', 'Bayern', 'München', ['#dc052d', '#ffffff'], 82.0, 1.5, 0),
-    'Borussia Dortmund': ('BVB', 'Borussia Dortmund', 'Dortmund', 'Dortmund', ['#fde100', '#000000'], 78.0, 1.3, 2),
-    'Bayer 04 Leverkusen': ('B04', 'Bayer 04 Leverkusen', 'Leverkusen', 'Leverkusen', ['#e32221', '#000000'], 77.0, 1.05, 0),
-    'RB Leipzig': ('RBL', 'RB Leipzig', 'Leipzig', 'Leipzig', ['#ffffff', '#dd0741'], 77.0, 0.98, 0),
-    'VfB Stuttgart': ('VFB', 'VfB Stuttgart', 'Stuttgart', 'Stuttgart', ['#ffffff', '#e32219'], 76.5, 1.1, 1),
-    'Eintracht Frankfurt': ('SGE', 'Eintracht Frankfurt', 'Frankfurt', 'Frankfurt am Main', ['#000000', '#e1000f'], 76.5, 1.2, 1),
+    'Borussia Dortmund': ('BVB', 'Borussia Dortmund', 'Dortmund', 'Dortmund', ['#fde100', '#000000'], 78.5, 1.3, 2),
+    'Bayer 04 Leverkusen': ('B04', 'Bayer 04 Leverkusen', 'Leverkusen', 'Leverkusen', ['#e32221', '#000000'], 76.5, 1.05, 0),
+    'RB Leipzig': ('RBL', 'RB Leipzig', 'Leipzig', 'Leipzig', ['#ffffff', '#dd0741'], 77.5, 0.98, 0),
+    'VfB Stuttgart': ('VFB', 'VfB Stuttgart', 'Stuttgart', 'Stuttgart', ['#ffffff', '#e32219'], 77.0, 1.1, 1),
+    'Eintracht Frankfurt': ('SGE', 'Eintracht Frankfurt', 'Frankfurt', 'Frankfurt am Main', ['#000000', '#e1000f'], 75.5, 1.2, 1),
     'SC Freiburg': ('SCF', 'SC Freiburg', 'Freiburg', 'Freiburg im Breisgau', ['#e2001a', '#000000'], 74.5, 1.15, 0),
-    'TSG 1899 Hoffenheim': ('TSG', 'TSG 1899 Hoffenheim', 'Hoffenheim', 'Sinsheim', ['#1961b5', '#ffffff'], 74.5, 0.85, -2),
-    '1. FSV Mainz 05': ('M05', '1. FSV Mainz 05', 'Mainz', 'Mainz', ['#c3141e', '#ffffff'], 73.5, 0.92, 0),
-    'Borussia Mönchengladbach': ('BMG', 'Borussia Mönchengladbach', 'M\'gladbach', 'Mönchengladbach', ['#ffffff', '#000000'], 73.0, 0.98, 2),
-    'SV Werder Bremen': ('SVW', 'SV Werder Bremen', 'Bremen', 'Bremen', ['#1d9053', '#ffffff'], 73.0, 1.05, 2),
-    '1. FC Union Berlin': ('FCU', '1. FC Union Berlin', 'Union Berlin', 'Berlin', ['#eb1923', '#ffffff'], 72.0, 1.6, 0),
-    'FC Augsburg': ('FCA', 'FC Augsburg', 'Augsburg', 'Augsburg', ['#ba3733', '#ffffff'], 72.0, 0.97, 0),
+    'TSG 1899 Hoffenheim': ('TSG', 'TSG 1899 Hoffenheim', 'Hoffenheim', 'Sinsheim', ['#1961b5', '#ffffff'], 76.0, 0.85, -2),
+    '1. FSV Mainz 05': ('M05', '1. FSV Mainz 05', 'Mainz', 'Mainz', ['#c3141e', '#ffffff'], 73.0, 0.92, 0),
+    'Borussia Mönchengladbach': ('BMG', 'Borussia Mönchengladbach', 'M\'gladbach', 'Mönchengladbach', ['#ffffff', '#000000'], 72.5, 0.98, 2),
+    'SV Werder Bremen': ('SVW', 'SV Werder Bremen', 'Bremen', 'Bremen', ['#1d9053', '#ffffff'], 72.0, 1.05, 2),
+    '1. FC Union Berlin': ('FCU', '1. FC Union Berlin', 'Union Berlin', 'Berlin', ['#eb1923', '#ffffff'], 72.5, 1.6, 0),
+    'FC Augsburg': ('FCA', 'FC Augsburg', 'Augsburg', 'Augsburg', ['#ba3733', '#ffffff'], 73.0, 0.97, 0),
     '1. FC Köln': ('KOE', '1. FC Köln', 'Köln', 'Köln', ['#ffffff', '#ed1c24'], 72.0, 1.2, 3),
-    'Hamburger SV': ('HSV', 'Hamburger SV', 'Hamburg', 'Hamburg', ['#ffffff', '#0a3a8a'], 71.5, 1.1, 4),
-    'FC Schalke 04': ('S04', 'FC Schalke 04', 'Schalke', 'Gelsenkirchen', ['#004d9d', '#ffffff'], 70.0, 1.15, 5),
+    'Hamburger SV': ('HSV', 'Hamburger SV', 'Hamburg', 'Hamburg', ['#ffffff', '#0a3a8a'], 72.0, 1.1, 4),
+    'FC Schalke 04': ('S04', 'FC Schalke 04', 'Schalke', 'Gelsenkirchen', ['#004d9d', '#ffffff'], 70.5, 1.15, 5),
     'SC Paderborn 07': ('SCP', 'SC Paderborn 07', 'Paderborn', 'Paderborn', ['#005ba9', '#000000'], 69.0, 0.95, -1),
     'SV Elversberg': ('SVE', 'SV Elversberg', 'Elversberg', 'Spiesen-Elversberg', ['#000000', '#ffffff'], 69.0, 0.95, -2),
     'VfL Wolfsburg': ('WOB', 'VfL Wolfsburg', 'Wolfsburg', 'Wolfsburg', ['#65b32e', '#ffffff'], 71.0, 0.8, 0),
     '1. FC Heidenheim': ('FCH', '1. FC Heidenheim 1846', 'Heidenheim', 'Heidenheim an der Brenz', ['#e2001a', '#003b79'], 68.5, 1.0, 0),
     'FC St. Pauli': ('STP', 'FC St. Pauli', 'St. Pauli', 'Hamburg', ['#6d4c33', '#ffffff'], 69.0, 1.3, 2),
-    'Hertha BSC': ('BSC', 'Hertha BSC', 'Hertha', 'Berlin', ['#005ca9', '#ffffff'], 68.5, 0.7, 3),
-    'Hannover 96': ('H96', 'Hannover 96', 'Hannover', 'Hannover', ['#1c9a3c', '#000000'], 68.0, 0.78, 2),
-    'VfL Bochum': ('BOC', 'VfL Bochum 1848', 'Bochum', 'Bochum', ['#005ca9', '#ffffff'], 67.5, 1.0, 1),
-    '1. FC Kaiserslautern': ('FCK', '1. FC Kaiserslautern', 'K\'lautern', 'Kaiserslautern', ['#d5001c', '#ffffff'], 67.0, 0.9, 3),
-    '1. FC Nürnberg': ('FCN', '1. FC Nürnberg', 'Nürnberg', 'Nürnberg', ['#ad1732', '#000000'], 66.5, 0.75, 3),
-    'SV Darmstadt 98': ('D98', 'SV Darmstadt 98', 'Darmstadt', 'Darmstadt', ['#004e9e', '#ffffff'], 67.0, 0.95, 0),
+    'Hertha BSC': ('BSC', 'Hertha BSC', 'Hertha', 'Berlin', ['#005ca9', '#ffffff'], 68.0, 0.7, 3),
+    'Hannover 96': ('H96', 'Hannover 96', 'Hannover', 'Hannover', ['#1c9a3c', '#000000'], 68.5, 0.78, 2),
+    'VfL Bochum': ('BOC', 'VfL Bochum 1848', 'Bochum', 'Bochum', ['#005ca9', '#ffffff'], 67.0, 1.0, 1),
+    '1. FC Kaiserslautern': ('FCK', '1. FC Kaiserslautern', 'K\'lautern', 'Kaiserslautern', ['#d5001c', '#ffffff'], 67.5, 0.9, 3),
+    '1. FC Nürnberg': ('FCN', '1. FC Nürnberg', 'Nürnberg', 'Nürnberg', ['#ad1732', '#000000'], 67.0, 0.75, 3),
+    'SV Darmstadt 98': ('D98', 'SV Darmstadt 98', 'Darmstadt', 'Darmstadt', ['#004e9e', '#ffffff'], 67.5, 0.95, 0),
     'Karlsruher SC': ('KSC', 'Karlsruher SC', 'Karlsruhe', 'Karlsruhe', ['#003d7c', '#ffffff'], 66.5, 0.85, 1),
-    'Holstein Kiel': ('KSV', 'Holstein Kiel', 'Kiel', 'Kiel', ['#0057a3', '#ffffff'], 67.0, 0.95, 0),
+    'Holstein Kiel': ('KSV', 'Holstein Kiel', 'Kiel', 'Kiel', ['#0057a3', '#ffffff'], 66.5, 0.95, 0),
     '1. FC Magdeburg': ('FCM', '1. FC Magdeburg', 'Magdeburg', 'Magdeburg', ['#0067b1', '#ffffff'], 66.0, 0.85, 1),
     'SpVgg Greuther Fürth': ('SGF', 'SpVgg Greuther Fürth', 'Fürth', 'Fürth', ['#009932', '#ffffff'], 65.5, 0.75, 0),
     'Arminia Bielefeld': ('DSC', 'DSC Arminia Bielefeld', 'Bielefeld', 'Bielefeld', ['#004e95', '#000000'], 66.0, 0.9, 1),
-    'Dynamo Dresden': ('SGD', 'SG Dynamo Dresden', 'Dresden', 'Dresden', ['#ffdd00', '#000000'], 65.5, 0.95, 3),
-    'Eintracht Braunschweig': ('EBS', 'Eintracht Braunschweig', 'Braunschweig', 'Braunschweig', ['#fdd204', '#00589b'], 65.0, 0.9, 1),
+    'Dynamo Dresden': ('SGD', 'SG Dynamo Dresden', 'Dresden', 'Dresden', ['#ffdd00', '#000000'], 66.0, 0.95, 3),
+    'Eintracht Braunschweig': ('EBS', 'Eintracht Braunschweig', 'Braunschweig', 'Braunschweig', ['#fdd204', '#00589b'], 65.5, 0.9, 1),
     'FC Energie Cottbus': ('FCE', 'FC Energie Cottbus', 'Cottbus', 'Cottbus', ['#e2001a', '#ffffff'], 64.5, 0.6, 1),
-    'VfL Osnabrück': ('OSN', 'VfL Osnabrück', 'Osnabrück', 'Osnabrück', ['#6b2c91', '#ffffff'], 64.0, 0.98, 1),
+    'VfL Osnabrück': ('OSN', 'VfL Osnabrück', 'Osnabrück', 'Osnabrück', ['#6b2c91', '#ffffff'], 65.0, 0.98, 1),
     'Fortuna Düsseldorf': ('F95', 'Fortuna Düsseldorf', 'Düsseldorf', 'Düsseldorf', ['#e30613', '#ffffff'], 65.0, 0.62, 4),
     'SC Preußen Münster': ('SCM', 'SC Preußen Münster', 'Münster', 'Münster', ['#00693e', '#000000'], 64.0, 0.8, 1),
     'FC Hansa Rostock': ('FCR', 'F.C. Hansa Rostock', 'Rostock', 'Rostock', ['#0080c8', '#ffffff'], 63.5, 0.85, 3),
     'Rot-Weiss Essen': ('RWE', 'Rot-Weiss Essen', 'Essen', 'Essen', ['#e2001a', '#ffffff'], 63.5, 0.9, 3),
     'MSV Duisburg': ('MSV', 'MSV Duisburg', 'Duisburg', 'Duisburg', ['#004c93', '#ffffff'], 63.0, 0.62, 3),
-    '1. FC Saarbrücken': ('FCS', '1. FC Saarbrücken', 'Saarbrücken', 'Saarbrücken', ['#0f4c92', '#000000'], 63.0, 0.7, 2),
+    '1. FC Saarbrücken': ('FCS', '1. FC Saarbrücken', 'Saarbrücken', 'Saarbrücken', ['#0f4c92', '#000000'], 62.0, 0.7, 2),
     'FC Ingolstadt 04': ('FCI', 'FC Ingolstadt 04', 'Ingolstadt', 'Ingolstadt', ['#c8102e', '#000000'], 62.5, 0.4, 0),
     'SSV Jahn Regensburg': ('SSV', 'SSV Jahn Regensburg', 'Regensburg', 'Regensburg', ['#e2001a', '#ffffff'], 62.5, 0.55, 0),
     'SV Waldhof Mannheim': ('SVW07', 'SV Waldhof Mannheim', 'Mannheim', 'Mannheim', ['#0a3d7a', '#000000'], 62.5, 0.5, 2),
     'Alemannia Aachen': ('AAC', 'Alemannia Aachen', 'Aachen', 'Aachen', ['#fdd400', '#000000'], 62.5, 0.75, 3),
     'SV Wehen Wiesbaden': ('SVWW', 'SV Wehen Wiesbaden', 'Wiesbaden', 'Wiesbaden', ['#e2001a', '#000000'], 62.5, 0.3, -1),
     'FC Viktoria Köln': ('VIK', 'FC Viktoria Köln', 'Viktoria Köln', 'Köln', ['#e2001a', '#000000'], 62.0, 0.4, -1),
-    'SC Verl': ('SCV', 'SC Verl', 'Verl', 'Verl', ['#000000', '#ffffff'], 62.0, 0.5, -2),
-    'TSG 1899 Hoffenheim II': ('TSG2', 'TSG 1899 Hoffenheim II', 'Hoffenheim II', 'Sinsheim', ['#1961b5', '#ffffff'], 62.0, 0.2, -4),
+    'SC Verl': ('SCV', 'SC Verl', 'Verl', 'Verl', ['#000000', '#ffffff'], 62.5, 0.5, -2),
+    'TSG 1899 Hoffenheim II': ('TSG2', 'TSG 1899 Hoffenheim II', 'Hoffenheim II', 'Sinsheim', ['#1961b5', '#ffffff'], 61.5, 0.2, -4),
     'VfB Stuttgart II': ('VFB2', 'VfB Stuttgart II', 'Stuttgart II', 'Stuttgart', ['#ffffff', '#e32219'], 61.5, 0.15, -4),
     'FC Würzburger Kickers': ('FWK', 'FC Würzburger Kickers', 'Würzburg', 'Würzburg', ['#e2001a', '#ffffff'], 61.0, 0.4, 0),
     'SV Meppen': ('SVM', 'SV Meppen', 'Meppen', 'Meppen', ['#0a4595', '#ffffff'], 61.0, 0.6, 1),
@@ -187,6 +187,7 @@ def parse_positions(v, squad_pos, name):
     toks = [t.strip() for t in re.split(r'[,/|\n]|\band\b|\bor\b', v) if t.strip()]
     out = []
     hh = h(name)
+    amb = set()
     for t in toks:
         p = None
         if 'goalkeeper' in t or 'keeper' in t: p = 'TW'
@@ -202,24 +203,28 @@ def parse_positions(v, squad_pos, name):
         elif 'winger' in t or 'wide mid' in t or 'wing' == t: p = 'LA' if hh % 2 else 'RA'
         elif 'central mid' in t or 'centre mid' in t or 'box-to-box' in t: p = 'ZM'
         elif 'striker' in t or 'centre-forward' in t or 'center-forward' in t or 'centre forward' in t or 'center forward' in t: p = 'ST'
-        elif 'midfielder' in t: p = generic('MF', hh)
-        elif 'defender' in t: p = generic('DF', hh)
-        elif 'forward' in t: p = generic('FW', hh)
+        elif 'midfielder' in t: p = generic('MF', hh); amb.add(p)
+        elif 'defender' in t: p = generic('DF', hh); amb.add(p)
+        elif 'forward' in t: p = generic('FW', hh); amb.add(p)
         if p and p not in out:
             out.append(p)
     if not out:
-        out = [generic(squad_pos, hh)]
+        out = [generic(squad_pos, hh)]; amb.add(out[0])
     # Plausibilität gegen die Kaderliste des Vereins (dort steht TW/Abwehr/Mittelfeld/Sturm)
     grp = {'TW': 'GK', 'IV': 'DF', 'LV': 'DF', 'RV': 'DF', 'DM': 'MF', 'ZM': 'MF', 'OM': 'MF', 'LA': 'FW', 'RA': 'FW', 'ST': 'FW'}
-    if squad_pos == 'GK': return ['TW']
-    if out[0] == 'TW' and squad_pos != 'GK': out = [generic(squad_pos, hh)]
-    if squad_pos in ('DF', 'MF', 'FW') and grp[out[0]] != squad_pos:
-        same = [p for p in out if grp[p] == squad_pos]
-        if same:
-            out = same + [p for p in out if p not in same]
-        elif not (squad_pos == 'MF' and out[0] in ('LA', 'RA')) and not (squad_pos == 'FW' and out[0] == 'OM') and not (squad_pos == 'DF' and out[0] == 'DM') and not (squad_pos == 'MF' and out[0] in ('LV', 'RV')):
-            out = [generic(squad_pos, hh)] + out
-    return out[:2]
+    if squad_pos == 'GK': return ['TW'], False
+    if out[0] == 'TW': out = [generic(squad_pos, hh)]; amb.add(out[0])
+    first = grp[out[0]]
+    prefer = None
+    if squad_pos == 'DF' and first != 'DF' and out[0] != 'DM': prefer = 'DF'
+    elif squad_pos == 'FW' and out[0] in ('IV', 'LV', 'RV', 'DM', 'ZM'): prefer = 'FW'
+    elif squad_pos == 'MF' and out[0] in ('IV', 'ST'): prefer = 'MF'
+    if prefer:
+        same = [p for p in out if grp[p] == prefer]
+        if same: out = same + [p for p in out if p not in same]
+        else:
+            g = generic(prefer, hh); amb.add(g); out = [g] + out
+    return out[:2], out[0] in amb
 
 
 def generic(sp, hh):
@@ -273,25 +278,25 @@ def features(ib, club_page, raw_len):
 
 
 def prev_table(path):
-    """Abschlusstabelle der Vorsaison aus dem Wikitext (Module:Sports table)"""
+    """Abschlusstabelle der Vorsaison, berechnet aus der Ergebnismatrix im Wikitext (Module:Sports results)"""
     if not os.path.exists(path):
         return {}
     w = open(path, encoding='utf-8').read()
-    names = dict(re.findall(r'\|\s*name_([A-Za-z0-9]+)\s*=\s*\[\[([^\]|]+)', w))
-    order = re.search(r'\|\s*team_order\s*=\s*([^\n|]+)', w)
-    res = {}
-    codes = [c.strip() for c in order.group(1).split(',')] if order else []
-    stats = {}
-    for code in names:
-        g = lambda k: int((re.search(r'\|\s*%s_%s\s*=\s*(-?\d+)' % (k, re.escape(code)), w) or [0, 0])[1])
-        wn, d, l, gf, ga = g('win'), g('draw'), g('loss'), g('gf'), g('ga')
-        stats[code] = (wn * 3 + d, gf - ga, gf)
-    if not codes or len(codes) < len(stats):
-        codes = sorted(stats, key=lambda c: stats[c], reverse=True)
-    for i, c in enumerate(codes):
-        if c in names:
-            res[names[c].strip()] = (i + 1, stats.get(c, (0, 0, 0))[0])
-    return res
+    names = {}
+    for code, val in re.findall(r'\|\s*name_(\w+)\s*=\s*([^\n]+)', w):
+        m = re.search(r'\[\[([^\]|]+)', val)
+        names[code] = (m.group(1) if m else val).strip()
+    st = {c: [0, 0, 0] for c in names}
+    for h_, a_, hg, ag in re.findall(r'\|\s*match_(\w+?)_(\w+?)\s*=\s*(\d+)\s*[–-]\s*(\d+)', w):
+        if h_ not in st or a_ not in st:
+            continue
+        hg = int(hg); ag = int(ag)
+        st[h_][1] += hg - ag; st[a_][1] += ag - hg; st[h_][2] += hg; st[a_][2] += ag
+        if hg > ag: st[h_][0] += 3
+        elif hg < ag: st[a_][0] += 3
+        else: st[h_][0] += 1; st[a_][0] += 1
+    order = sorted(st, key=lambda c: tuple(st[c]), reverse=True)
+    return {names[c]: (i + 1, st[c][0]) for i, c in enumerate(order)}
 
 
 def main():
@@ -317,12 +322,12 @@ def main():
             f = features(ib, c['page'], pg['len'] if pg else 0) if ib else {'apps': 0, 'cur_apps': 0, 'goals': 0, 'caps': 0, 'ucaps': 0, 'len': 0}
             hh = h(nm)
             est = 0
-            if not by:
+            if not by or SEASON - by > 41 or SEASON - by < 15:
                 est = 1
                 by = SEASON - (18 + hh % 6 if c['tier'] < 3 or sp['pos'] != 'GK' else 19 + hh % 8)
             if not bm:
                 bm = 1 + hh % 12
-            pos = parse_positions(ib.get('position', ''), sp['pos'], nm)
+            pos, amb = parse_positions(ib.get('position', ''), sp['pos'], nm)
             nat = sp['nat'].strip().upper()
             nat = NATFIX.get(nat, COUNTRY.get(sp['nat'].strip().lower(), nat))[:3]
             age = SEASON - by
@@ -331,10 +336,19 @@ def main():
             score = 0.6 * (fame - 4.0) / 0.45 + 1.1 * natw * min(1.0, math.log1p(f['caps']) / math.log(60)) + 0.5 * min(1.0, f['apps'] / 260.0) + 0.25 * min(1.0, f['ucaps'] / 25.0) + 0.3 * min(1.0, f['cur_apps'] / 60.0)
             if not ib:
                 score -= 0.9
-            rows.append(dict(name=nm, nat=nat, pos=pos[0], pos2=pos[1] if len(pos) > 1 else '', by=by, bm=bm, age=age, score=score, no=sp['no'] or 0, cap=1 if 'captain' in sp['other'].lower() and 'vice' not in sp['other'].lower() else 0, f=f, est=est, has=bool(ib)))
+            rows.append(dict(name=nm, nat=nat, pos=pos[0], pos2=pos[1] if len(pos) > 1 else '', by=by, bm=bm, age=age, score=score, no=sp['no'] or 0, cap=1 if 'captain' in sp['other'].lower() and 'vice' not in sp['other'].lower() else 0, f=f, est=est, has=bool(ib), amb=amb, sp=sp['pos']))
         if len(rows) > 31:  # übergroße Kader (mitgeführte Nachwuchsspieler) auf Profikader-Größe kürzen
             keep = sorted(rows, key=lambda r: -r['score'] - (5 if r['pos'] == 'TW' else 0))[:31]
             rows = [r for r in rows if r in keep]
+        # Mannschaftsteile ausbalancieren – aber nur bei Spielern, deren genaue Position die Quelle offen lässt
+        def cnt(p): return sum(1 for r in rows if r['pos'] == p)
+        def conv(frm, to, need):
+            for r in sorted(rows, key=lambda r: -r['score']):
+                if cnt(to) >= need: break
+                if r['amb'] and r['pos'] in frm and cnt(r['pos']) > 1: r['pos'] = to; r['pos2'] = ''
+        conv(('LA', 'RA'), 'ST', 3)
+        conv(('IV', 'RV'), 'LV', 2); conv(('IV', 'LV'), 'RV', 2); conv(('LV', 'RV'), 'IV', 4)
+        conv(('DM', 'OM', 'LA', 'RA'), 'ZM', 3); conv(('ZM', 'OM'), 'DM', 2)
         sc = [r['score'] for r in rows]
         mu = statistics.mean(sc); sd = statistics.pstdev(sc) or 1
         for r in rows:

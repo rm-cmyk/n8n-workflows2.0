@@ -6,7 +6,7 @@
   const M = (FM.Match = {});
 
   // Stellschrauben der Engine (kalibriert über tests/calib.js auf Bundesliga-typische Werte)
-  const CFG = (M.CFG = { chance: 0.049, goal: 0.268, expC: 2.3, expG: 1.25, expM: 3, home: 0.02, yellow: 0.0215, red: 0.0003 });
+  const CFG = (M.CFG = { chance: 0.057, goal: 0.268, expC: 2.1, expG: 1.25, expM: 3, home: 0.01, yellow: 0.0215, red: 0.0003 });
   const HOME_ADV = 1.04;
 
   /* ---------- Ticker-Texte (eigene Texte, mit Augenzwinkern) ---------- */
@@ -178,11 +178,11 @@
     const cand = onPitch(side).filter((x) => x.pos !== 'TW');
     if (!cand.length) return null;
     return R.weighted(cand, (x) => {
-      const p = P[x.pid]; let w = FM.POS_W[x.pos][2] + 0.06;
+      const p = P[x.pid]; let w = Math.pow(FM.POS_W[x.pos][2], 0.8) + 0.1;
       if (kind === 'header') { w = (x.pos === 'IV' ? 0.6 : x.pos === 'ST' ? 1 : 0.25) * (p.tr.indexOf('kopfball') >= 0 ? 2.4 : 1); }
       if (kind === 'long') w = FM.POS_W[x.pos][1] + 0.2;
       if (!x.start && p.tr.indexOf('joker') >= 0) w *= 1.8;
-      return w * Math.pow(x.eff / 60, 2);
+      return w * Math.pow(x.eff / 60, 1.3);
     });
   }
   function pickAssist(m, si, shooter) {
@@ -576,6 +576,15 @@
       const x = rest.splice(bi, 1)[0]; x.pos = slots[i].pos; x.role = slots[i].role; x.x = slots[i].x; x.y = slots[i].y;
     }
     side.formation = formation; side.dirty = true; return true;
+  };
+
+  /* Linienstärken einer Aufstellung (für die Anzeige im Aufstellungsbildschirm) */
+  M.preview = function (world, club, lineup) {
+    const xi = lineup.xi.map((id) => (world.players[id] ? id : 0));
+    const side = buildSide(world, club, false, { formation: lineup.formation, xi, bench: [] }, club.tactics, false);
+    const m = { world, opts: { neutral: true }, homeAdv: 1, sides: [side, { goals: 0 }] };
+    calcStr(m, 0);
+    return side.str;
   };
 
   /* Komplett durchrechnen (KI-Spiele, Sofortergebnis) */

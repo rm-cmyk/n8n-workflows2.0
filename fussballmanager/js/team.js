@@ -135,6 +135,37 @@
     return L;
   };
 
+  /* Spieler auf einen Platz setzen (Startelf, Bank oder Tribüne). Wer dort stand, tauscht den Platz. */
+  T.place = function (world, club, pid, tgt) {
+    const L = club.lineup; if (!L) return;
+    const curXi = L.xi.indexOf(pid), curB = L.bench.indexOf(pid);
+    if (tgt.t === 'out') { if (curXi >= 0) L.xi[curXi] = 0; if (curB >= 0) L.bench.splice(curB, 1); }
+    else if (tgt.t === 'xi') {
+      const occ = L.xi[tgt.i] || 0; if (occ === pid) return;
+      if (curXi >= 0) L.xi[curXi] = occ; else if (curB >= 0) { if (occ) L.bench[curB] = occ; else L.bench.splice(curB, 1); }
+      L.xi[tgt.i] = pid;
+    } else if (tgt.t === 'bench') {
+      const occ = L.bench[tgt.i] || 0; if (occ === pid) return;
+      if (curXi >= 0) { L.xi[curXi] = occ; if (occ) L.bench[tgt.i] = pid; else if (L.bench.length < 9) L.bench.push(pid); }
+      else if (curB >= 0) { if (occ) { L.bench[curB] = occ; L.bench[tgt.i] = pid; } }
+      else if (occ) L.bench[tgt.i] = pid; else if (L.bench.length < 9) L.bench.push(pid);
+    }
+    L.bench = L.bench.filter(Boolean).slice(0, 9);
+    for (const r of ['pen', 'fk', 'cap']) if (L[r] && L.xi.indexOf(L[r]) < 0) L[r] = 0;
+  };
+  /* Formation wechseln: dieselben elf Spieler werden bestmöglich auf die neuen Plätze verteilt */
+  T.reformat = function (world, club, formation) {
+    const L = club.lineup; const slots = FM.FORMATIONS[formation]; if (!L || !slots) return;
+    const P = world.players; const rest = L.xi.filter((id) => P[id]); const xi = new Array(11).fill(0);
+    const order = slots.map((s, i) => i).sort((a, b) => (slots[a].pos === 'TW' ? -1 : 0) - (slots[b].pos === 'TW' ? -1 : 0));
+    for (const i of order) {
+      let bi = -1, bv = -1;
+      rest.forEach((id, k) => { const v = P[id].ovr * FM.posFit(P[id], slots[i].pos); if (v > bv) { bv = v; bi = k; } });
+      if (bi >= 0) xi[i] = rest.splice(bi, 1)[0];
+    }
+    L.formation = formation; L.xi = xi; club.formation = formation;
+  };
+
   /* Aufstellung für ein Spiel: KI stellt frisch auf; beim Spieler wird notfalls repariert (nie ein Abbruch) */
   T.matchLineup = function (world, club, isUser, friendly) {
     if (isUser) {

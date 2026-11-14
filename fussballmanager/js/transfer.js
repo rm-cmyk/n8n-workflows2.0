@@ -257,6 +257,21 @@
     }
   }
 
+  // Starke vereinslose Spieler bleiben nicht lange auf dem Markt: Der attraktivste passende Klub greift zu
+  function freeAgentPickup(world) {
+    const free = U.sortBy(Object.keys(world.players).map((k) => world.players[k]).filter((p) => !p.club && !p.ab && !p.yo), (p) => p.ovr, true).slice(0, 4);
+    const clubs = U.sortBy(FM.Game.clubList(world).filter((c) => c.id !== world.user && c.tier <= 3 && c.squad.length < 30), (c) => c.rep, true);
+    for (const p of free) {
+      if (!R.chance(0.45)) continue;
+      for (const c of clubs) {
+        const lvl = Team.level(world, c);
+        if (p.ovr < lvl - 3.5 || !X.interest(world, p, c).ok) continue;
+        const wage = X.wageDemand(world, p, c); if (wage > E.yearIncome(world, c) * 0.09) continue;
+        X.move(world, p, c, 0, wage, world.season + R.int(1, 3)); break;
+      }
+    }
+  }
+
   X.weekly = function (world) {
     world.offers = world.offers.filter((o) => o.exp >= world.week && world.players[o.pid]);
     const clubs = FM.Game.clubList(world);
@@ -272,6 +287,7 @@
       }
       offersToUser(world);
     }
+    freeAgentPickup(world);
     const u = FM.Game.user(world);
     if (u && !u.sponsor && world.week >= 4 && world.sponsorOffers) { // nicht entschieden → sicherste Variante
       const o = world.sponsorOffers[0]; u.sponsor = { name: o.name, base: o.base, win: o.win, until: world.season + o.years - 1 }; world.sponsorOffers = null;
@@ -301,7 +317,7 @@
         }
         if (p.until <= world.season + 1) {
           if (club === user) { X.toFree(world, p); left.push(p.name); }
-          else if (old < 34 && R.chance(p.ovr >= Team.level(world, club) - 6 ? 0.8 : 0.45)) { p.until = world.season + 1 + R.int(1, 3); p.wage = U.roundMoney(Math.max(p.wage, X.wageDemand(world, p, club) * 0.9)); }
+          else if (old < 34 && R.chance(p.ovr >= Team.level(world, club) - 1 && old < 33 ? 1 : p.ovr >= Team.level(world, club) - 3 && old < 32 ? 0.94 : p.ovr >= Team.level(world, club) - 6 ? 0.8 : 0.45)) { p.until = world.season + 1 + R.int(1, 3); p.wage = U.roundMoney(Math.max(p.wage, X.wageDemand(world, p, club) * 0.9)); }
           else X.toFree(world, p);
         }
       }

@@ -223,7 +223,7 @@
         p.fit = U.clamp(p.fit + (p.inj > 0 ? rec * 0.6 : rec), 30, 100);
         const sw = p.tr.indexOf('launisch') >= 0 ? 9 : p.tr.indexOf('musterprofi') >= 0 ? 3 : 5;
         p.form = U.clamp(p.form + R.gauss() * sw + (52 - p.form) * 0.12 + (focus === 'torschuss' && FM.POS_GROUP[p.pos] === 'S' ? 2.5 : 0) + (focus === 'regeneration' ? 1 : 0), 5, 99);
-        p.mor = U.clamp(p.mor + (60 - p.mor) * 0.06 + (focus === 'regeneration' ? 1 : 0) - (intens === 2 ? 0.6 : 0) - ((p.bench || 0) > 5 && p.ovr >= Team.level(world, club) - 1 ? 2 : 0), 5, 99);
+        p.mor = U.clamp(p.mor + (66 - p.mor) * 0.06 + (focus === 'regeneration' ? 1 : 0) - (intens === 2 ? 0.6 : 0) - ((p.bench || 0) > 5 && p.ovr >= Team.level(world, club) - 1 ? 2 : 0), 5, 99);
         // Entwicklung
         const gap = p.pot - p.ovr; let d = 0; const aging = p.pos === 'TW' ? age - 2 : age;
         if (aging <= 23 && gap > 0) d = Math.min(0.09, 0.016 + gap * 0.0065) * (focus === 'technik' ? 1.2 : 1);

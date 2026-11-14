@@ -128,7 +128,9 @@
     const N = FM.LINE_NORM, K = 0.92; const ref = N[0] * Math.pow(N[1], K) * N[2];
     for (const f of FM.FORMATION_NAMES) {
       const t = [0, 0, 0]; for (const sl of FM.FORMATIONS[f]) { const w = FM.POS_W[sl.role]; t[0] += w[0]; t[1] += w[1]; t[2] += w[2]; }
-      FM.FORM_G[f] = Math.pow(ref / (t[0] * Math.pow(t[1], K) * t[2]), 1 / (2 + K));
+      // Feinkorrektur aus tests/formations.js (sehr defensive Systeme kosten sonst zu viele Punkte)
+      const fine = { '5-3-2': 1.025, '5-4-1': 1.015, '3-4-3': 1.012, '4-4-2': 1.005, '3-5-2': 1.005 }[f] || 1;
+      FM.FORM_G[f] = fine * Math.pow(ref / (t[0] * Math.pow(t[1], K) * t[2]), 1 / (2 + K));
     }
   })();
 

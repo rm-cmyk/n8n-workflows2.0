@@ -43,7 +43,7 @@
   };
   const AGEF = { 15: 0.7, 16: 0.8, 17: 0.9, 18: 1.0, 19: 1.12, 20: 1.2, 21: 1.2, 22: 1.16, 23: 1.1, 24: 1.05, 25: 1.0, 26: 0.97, 27: 0.9, 28: 0.8, 29: 0.68, 30: 0.55, 31: 0.43, 32: 0.32, 33: 0.22, 34: 0.15, 35: 0.1 };
   G.valueFor = function (p, age, season) {
-    let v = 22000 * Math.exp((p.ovr - 50) * 0.205);
+    let v = 30000 * Math.exp((p.ovr - 50) * 0.205);
     v *= AGEF[U.clamp(age, 15, 35)] || 0.06;
     if (age >= 36) v *= 0.6;
     const gap = Math.max(0, p.pot - p.ovr);
@@ -81,7 +81,7 @@
     const p = {
       id, name: d.name, nat: d.nat || 'GER', pos: d.pos, pos2: d.pos2 || '', by: d.by, bm: d.bm || 1 + (FM.hash(d.name) % 12),
       ovr: U.clamp(Math.round(d.ovr), 30, 99), pot: U.clamp(Math.round(Math.max(d.pot || d.ovr, d.ovr)), 30, 99), xp: 0,
-      fit: 100, form: 50, mor: 60, inj: 0, injT: '', sus: 0, yel: 0,
+      fit: 100, form: 50, mor: 68, inj: 0, injT: '', sus: 0, yel: 0,
       club: d.club || null, wage: 0, until: 0, val: 0, tr: d.tr || [], no: d.no || 0, gen: d.gen ? 1 : 0,
       st: G.blankStats(), car: { ap: 0, go: 0 }, listed: 0, joined: world.season, bench: 0,
     };
