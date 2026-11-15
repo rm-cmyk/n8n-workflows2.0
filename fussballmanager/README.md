@@ -14,6 +14,10 @@ den Herstellern anderer Managerspiele und verwendet weder Logos noch lizenzierte
 - **56 spielbare Vereine** aus Bundesliga, 2. Bundesliga und 3. Liga mit den Kadern der Saison 2026/27
   (1.577 Spieler), dazu 14 Traditionsklubs der Regionalliga als Pokalgegner und Aufsteiger.
 - **Ligen mit Auf- und Abstieg** inklusive Relegation, **DFB-Pokal** mit 64 Teilnehmern, Testspiele.
+- **Europapokal**: Champions League, Europa League und Conference League im aktuellen Format – Ligaphase mit
+  36 Klubs, Playoffs, Hin- und Rückspiele bis zum Finale – gegen die 101 ausländischen Teilnehmer der Saison
+  2026/27 mit ihren Kadern. Qualifikation über die Bundesliga-Platzierung und den Pokalsieg, Prämien pro Sieg
+  und Runde, ausländische Klubs als Käufer und Verkäufer auf dem Transfermarkt.
 - **Live-Spiel** Minute für Minute: Ticker, Konferenz der anderen Plätze, fünf Wechsel, Taktik- und
   Formationswechsel, Positionstausch, Kabinenansprache, Verlängerung, Elfmeterschießen. Oder Sofortergebnis.
 - **Aufstellung** mit neun Formationen, Ausrichtung, Pressing, Härte, Spielweise, Kapitän, Elfmeter- und
@@ -36,6 +40,8 @@ den Herstellern anderer Managerspiele und verwendet weder Logos noch lizenzierte
 | Kader, Rückennummern, Nationalitäten, Kapitäne | Wikipedia-Vereinsartikel (Stand: Datum in `js/data.js`) |
 | Geburtsdaten und Positionen | Wikipedia-Spielerartikel (für 1.143 von 1.577 Spielern vorhanden) |
 | Vorjahresplatzierung | aus den Ergebnissen der Saison 2025/26 berechnet |
+| Europapokal-Teilnehmer und ihre Kader | Wikipedia: Teilnehmerlisten der drei Ligaphasen 2026/27 und Vereinsartikel (101 Klubs, 2.595 Spieler) |
+| Geburtsdaten und Positionen der ausländischen Spieler | Wikipedia-Spielerartikel für die Champions-League-Klubs und die größeren Klubs der anderen Wettbewerbe (1.471 Spieler); beim Rest geschätzt |
 | **Spielstärke und Talent** | **eigene Schätzung** – siehe unten |
 | Gehälter, Marktwerte, Vertragslaufzeiten | vom Spiel aus Stärke, Alter und Vereinsgröße abgeleitet |
 
@@ -43,7 +49,9 @@ Wikipedia-Inhalte stehen unter [CC BY-SA 4.0](https://creativecommons.org/licens
 
 Für Spielstärken gibt es keine freie Quelle. `tools/build_data.py` schätzt sie aus dem Niveau des Vereins
 (von Hand gesetzt, an der Abschlusstabelle 2025/26 ausgerichtet) und der Rolle im Kader (Länderspiele,
-Einsätze, Alter, Umfang des Artikels). Für rund 220 bekannte Spieler ist der Wert von Hand gesetzt.
+Einsätze, Alter, Umfang des Artikels). Für rund 220 bekannte Bundesliga-Spieler und rund 300 internationale
+Spieler ist der Wert von Hand gesetzt. Bei kleineren ausländischen Klubs ohne Spielerartikel entscheidet neben
+dem Klubniveau nur die Rückennummer über die Rangfolge im Kader – dort sind die Einzelwerte entsprechend grob.
 Bei Spielern ohne eigenen Wikipedia-Artikel (vor allem Nachwuchs und 3. Liga) sind Alter und genaue Position
 geschätzt. Wer es besser weiß: Die Tabellen `CLUBS` und `STARS` in `tools/build_data.py` sind dafür gedacht.
 
@@ -83,15 +91,20 @@ sh tests/run.sh
   (jeder gegen jeden, gleich viele Heimspiele), Kader, Konten, Auf-/Abstieg und den Spielstand-Roundtrip.
 - `tests/calib.js` – misst Tore, Heim-/Auswärtsbilanz, Karten und Punkteverteilung.
 - `tests/formations.js` – lässt alle Formationen gegeneinander antreten.
+- `tests/euro.js` – prüft die Europapokal-Auslosung (jeder gleich viele Heim- und Auswärtsspiele, kein Gegner
+  doppelt, keine Duelle innerhalb eines Landes), den Ablauf bis zum Finale und die Startplatzvergabe.
 - `tests/e2e.js` – spielt im echten Browser (Playwright) durch alle Bildschirme, zwei Live-Spiele mit Wechseln,
   Speichern/Neuladen und die Handy-Ansicht.
+- `tests/e2e-euro.js` – spielt einen Europapokal-Abend live und prüft Tabellen, K.-o.-Runde und Saisonabschluss.
 
 Tests senken das Risiko, sie beweisen keine Fehlerfreiheit. Wer etwas findet: Der Spielstand-Export hilft beim
 Nachstellen.
 
 ## Was (noch) fehlt
 
-- **Europapokal** wird nicht ausgespielt. Die ersten sechs der Bundesliga erhalten pauschale Einnahmen.
+- Im Europapokal gibt es keine Qualifikationsrunden: Die deutschen Starter stehen direkt in der Ligaphase,
+  das ausländische Teilnehmerfeld wird ab der zweiten Saison nach Spielstärke (mit etwas Zufall) verteilt.
+- Ausländische Klubs spielen keine eigene Liga; ihr Niveau wird zum Saisonwechsel nachgeführt.
 - Keine Leihgeschäfte, keine Nationalmannschaften, keine Trainer- und Mitarbeiterverwaltung.
 - Regionalligisten haben erzeugte Kader; spielbar sind nur die drei Profiligen.
 - Einzelattribute pro Spieler (Tempo, Technik …) gibt es bewusst nicht: Sie wären ohne Datenquelle reine
@@ -110,6 +123,7 @@ js/econ.js          Einnahmen, Ausgaben, Sponsoren, Stadion, Vorstand
 js/match.js         Spiel-Engine
 js/transfer.js      Transfermarkt, Verträge, KI-Transfers
 js/events.js        Zufallsereignisse
+js/euro.js          Europapokal
 js/game.js          Wochenablauf, Training, Saisonwechsel
 js/world.js         Neues Spiel, Speichern/Laden
 js/data.js          Datenbank (erzeugt)

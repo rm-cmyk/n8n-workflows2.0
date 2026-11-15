@@ -35,7 +35,7 @@
       body = '<div class="grid g2"><div class="card"><h3>Vorstand</h3><dl class="kv"><dt>Saisonziel</dt><dd>' + h(c.board.goal) + '</dd><dt>Vertrauen</dt><dd>' + Math.round(c.board.trust) + ' %</dd></dl>' + UI.bar(c.board.trust, 1) + '<p class="muted">Das Vertrauen steigt, wenn du besser abschneidest als erwartet – gemessen an der Stärke beider Mannschaften. Fällt es dauerhaft unter 10 %, ist dein Stuhl nicht mehr zu retten.</p></div>' +
         '<div class="card"><h3>Fans</h3><dl class="kv"><dt>Stimmung</dt><dd>' + Math.round(c.fans) + ' %</dd><dt>Fanbasis</dt><dd>' + U.num(c.fanbase) + '</dd><dt>Ansehen des Vereins</dt><dd>' + Math.round(c.rep) + ' von 99</dd></dl>' + UI.bar(c.fans, 1) + '<p class="muted">Gute Stimmung füllt das Stadion und den Fanshop. Die Fanbasis wächst langsam mit dem Erfolg.</p></div></div>';
     } else if (tab === 'history') {
-      body = '<div class="card flat"><div class="tw"><table class="t"><thead><tr><th>Saison</th><th>Meister</th><th>Pokalsieger</th><th>Dein Verein</th><th class="r">Platz</th><th class="r">Punkte</th></tr></thead><tbody>' + (w.history.length ? w.history.slice().reverse().map((x) => '<tr><td>' + Cal.seasonLabel(x.s) + '</td><td>' + UI.clubName(x.champs[1], 1) + '</td><td>' + UI.clubName(x.cup, 1) + '</td><td>' + (x.u ? UI.clubName(x.u.cid, 1) + ' <span class="muted">(' + h(Cal.LEAGUE_NAME[x.u.tier]) + ')</span>' : '–') + '</td><td class="r">' + (x.u ? x.u.pos + '.' : '') + '</td><td class="r">' + (x.u ? x.u.pts : '') + '</td></tr>').join('') : '<tr><td colspan="6" class="muted">Die erste Saison läuft noch. Hier entsteht deine Vereinschronik.</td></tr>') + '</tbody></table></div></div>';
+      body = '<div class="card flat"><div class="tw"><table class="t"><thead><tr><th>Saison</th><th>Meister</th><th>Pokalsieger</th><th>Champions League</th><th>Dein Verein</th><th class="r">Platz</th><th class="r">Punkte</th></tr></thead><tbody>' + (w.history.length ? w.history.slice().reverse().map((x) => '<tr><td>' + Cal.seasonLabel(x.s) + '</td><td>' + UI.clubName(x.champs[1], 1) + '</td><td>' + UI.clubName(x.cup, 1) + '</td><td>' + (x.euro && x.euro.CL ? UI.clubName(x.euro.CL, 1) : '–') + '</td><td>' + (x.u ? UI.clubName(x.u.cid, 1) + ' <span class="muted">(' + h(Cal.LEAGUE_NAME[x.u.tier]) + ')</span>' : '–') + '</td><td class="r">' + (x.u ? x.u.pos + '.' : '') + '</td><td class="r">' + (x.u ? x.u.pts : '') + '</td></tr>').join('') : '<tr><td colspan="7" class="muted">Die erste Saison läuft noch. Hier entsteht deine Vereinschronik.</td></tr>') + '</tbody></table></div></div>';
     } else {
       body = '<div class="card"><h3>' + h(c.stadium) + ' <small>' + U.num(c.cap) + ' Plätze</small></h3>' + (c.buildS ? '<p class="msg">Ausbau um ' + U.num(c.buildS.seats) + ' Plätze läuft – fertig in ' + c.buildS.weeks + ' Wochen.</p>' : '<div class="grid g3">' + E.STADIUM_OPTS.map((o, i) => { const cost = E.stadiumCost(c, o.seats); return '<div class="stack"><b>+' + U.num(o.seats) + ' Plätze</b><span class="muted">' + o.weeks + ' Wochen Bauzeit</span><button class="btn ' + (c.money >= cost ? 'pri' : '') + '" data-a="build" data-t="stadium" data-i="' + i + '"' + (c.money >= cost ? '' : ' disabled') + '>' + U.money(cost) + '</button></div>'; }).join('') + '</div>') + '<p class="muted" style="font-size:13px">Ausbauen lohnt sich nur, wenn die Nachfrage da ist: Fanbasis ' + U.num(c.fanbase) + ', zuletzt ' + (c.fanbase >= c.cap ? 'regelmäßig ausverkauft' : 'nicht ausverkauft') + '.</p></div>' +
         '<div class="grid g2">' + Object.keys(E.INFRA).map((k) => { const lv = c.infra[k]; const up = E.infraCost(c, k); const busy = c.buildI && c.buildI.key === k; return '<div class="card"><h3>' + E.INFRA[k].n + ' <small>' + UI.pips(lv, 5) + '</small></h3><p class="muted">' + E.INFRA[k].d + '</p>' + (busy ? '<p class="msg">Ausbau läuft – fertig in ' + c.buildI.weeks + ' Wochen.</p>' : !up ? '<p class="good">Höchste Ausbaustufe erreicht.</p>' : '<div class="row"><button class="btn ' + (c.money >= up.cost && !c.buildI ? 'pri' : '') + '" data-a="build" data-t="' + k + '"' + (c.money >= up.cost && !c.buildI ? '' : ' disabled') + '>Ausbau auf Stufe ' + (lv + 1) + ' · ' + U.money(up.cost) + '</button><span class="muted">' + up.weeks + ' Wochen' + (c.buildI ? ' · es läuft bereits ein Projekt' : '') + '</span></div>') + '</div>'; }).join('') + '</div>';
@@ -45,9 +45,42 @@
   UI.A.build = (d) => { const err = E.startBuild(UI.world, UI.user(), d.t, d.i != null ? +d.i : undefined); UI.toast(err || 'Die Bagger rollen.'); UI.render(); };
 
   /* ---------- Wettbewerbe ---------- */
+  function compOptions(w) { return [[1, 'Bundesliga'], [2, '2. Bundesliga'], [3, '3. Liga']].concat(w.euro ? FM.Euro.ORDER.map((k) => [k, FM.Euro.COMPS[k].n]) : []); }
+  function tieLine(w, t, st) {
+    const l0 = t.legs[0], l1 = t.legs[1];
+    const sc = (f) => (f && f.p ? f.hg + ':' + f.ag + (f.pens ? ' i. E.' : f.et ? ' n. V.' : '') : '–:–');
+    const bold = (cid) => (t.w === cid ? 'font-weight:700' : '');
+    const me = (cid) => (cid === w.user ? ' ●' : '');
+    if (st.stage === 'f') return '<span class="h" style="' + bold(l0.h) + '">' + UI.clubName(l0.h) + me(l0.h) + '</span><span class="s">' + sc(l0) + '</span><span class="a" style="' + bold(l0.a) + '">' + UI.clubName(l0.a) + me(l0.a) + '</span>';
+    // Darstellung aus Sicht des Hinspiels: Heimklub links, beide Ergebnisse in dieser Reihenfolge
+    return '<span class="h" style="' + bold(t.a) + '">' + UI.clubName(t.a) + me(t.a) + '</span><span class="s">' + sc(l0) + ' · ' + (l1 && l1.p ? l1.ag + ':' + l1.hg + (l1.pens ? ' i. E.' : l1.et ? ' n. V.' : '') : '–:–') + '</span><span class="a" style="' + bold(t.b) + '">' + UI.clubName(t.b) + me(t.b) + '</span>';
+  }
+  function euroView(k) {
+    const w = UI.world; const EU = FM.Euro; const comp = w.euro.comps[k]; const D = EU.COMPS[k]; const tab = ['table', 'fixtures', 'ko'].indexOf(UI.p.tab) >= 0 ? UI.p.tab : 'table'; let body;
+    const top = '<div class="row"><label class="f">Wettbewerb<select data-c="compTier">' + UI.opt(compOptions(w), k) + '</select></label></div>';
+    if (tab === 'table') {
+      const t = EU.table(w, k);
+      body = '<div class="card flat"><div class="tw"><table class="t"><thead><tr><th></th><th>#</th><th>Verein</th><th>Land</th><th class="r">Sp</th><th class="r">S</th><th class="r">U</th><th class="r">N</th><th class="r">Tore</th><th class="r">Diff</th><th class="r">Pkt</th><th>Form</th></tr></thead><tbody>' +
+        t.map((r) => { const c = w.clubs[r.cid]; return '<tr class="' + (r.cid === w.user ? 'me' : '') + '"><td class="zone ' + (r.pos <= 8 ? 'z-up' : r.pos <= 24 ? 'z-rel' : 'z-down') + '"></td><td class="num">' + r.pos + '</td><td class="name">' + UI.crest(c, 'sm') + ' ' + h(c.name) + '</td><td>' + UI.nat(EU.natOf(c)) + '</td><td class="r">' + r.sp + '</td><td class="r">' + r.s + '</td><td class="r">' + r.u + '</td><td class="r">' + r.n + '</td><td class="r">' + r.tf + ':' + r.ta + '</td><td class="r">' + (r.tf - r.ta > 0 ? '+' : '') + (r.tf - r.ta) + '</td><td class="r"><b>' + r.pts + '</b></td><td><span class="form5">' + r.form.map((x) => '<i class="' + x + '">' + x + '</i>').join('') + '</span></td></tr>'; }).join('') + '</tbody></table></div></div>' +
+        '<p class="muted" style="font-size:13px"><span class="chip good">Platz 1–8: Achtelfinale</span> <span class="chip warn">Platz 9–24: Playoffs</span> <span class="chip bad">ab Platz 25: ausgeschieden</span> · Jeder Klub spielt ' + D.md + ' Partien gegen ' + D.md + ' verschiedene Gegner, je zur Hälfte daheim und auswärts.</p>';
+    } else if (tab === 'fixtures') {
+      let played = 0; for (const rd of comp.rounds) { if (rd.every((f) => f.p)) played++; else break; }
+      const md = U.clamp(+(UI.p.md || Math.min(comp.rounds.length, played + 1)), 1, comp.rounds.length);
+      body = '<div class="card"><div class="row between"><button class="btn sm" data-a="md" data-v="' + (md - 1) + '"' + (md <= 1 ? ' disabled' : '') + '>◂ zurück</button><h3>' + md + '. Spieltag der Ligaphase</h3><button class="btn sm" data-a="md" data-v="' + (md + 1) + '"' + (md >= comp.rounds.length ? ' disabled' : '') + '>weiter ▸</button></div><div class="conf" style="font-size:15px;gap:6px 10px">' +
+        comp.rounds[md - 1].map((f) => '<span class="h" ' + (f.h === w.user ? 'style="font-weight:700"' : '') + '>' + UI.clubName(f.h) + '</span><span class="s">' + UI.fxScore(f) + '</span><span class="a" ' + (f.a === w.user ? 'style="font-weight:700"' : '') + '>' + UI.clubName(f.a) + '</span>').join('') + '</div></div>';
+    } else {
+      body = comp.ko.length ? comp.ko.slice().reverse().map((st) => '<div class="card"><h3>' + EU.STAGE_NAME[st.stage] + (st.stage === 'f' ? '' : ' <small>Hinspiel · Rückspiel (aus Sicht des Hinspiel-Gastgebers)</small>') + '</h3><div class="conf" style="font-size:14px">' + st.ties.map((t) => tieLine(w, t, st)).join('') + '</div></div>').join('') + (comp.winner ? '<p class="msg good">Sieger der ' + D.n + ' ' + Cal.seasonLabel(w.season) + ': ' + UI.clubName(comp.winner) + '</p>' : '')
+        : '<div class="card"><p class="muted">Die K.-o.-Runde beginnt nach der Ligaphase. Platz 1–8 stehen direkt im Achtelfinale, Platz 9–24 spielen in den Playoffs um die übrigen acht Plätze.</p></div>';
+    }
+    return '<div class="head"><div><h1>' + D.n + '</h1><p>Saison ' + Cal.seasonLabel(w.season) + ' · ' + comp.teams.length + ' Klubs' + (comp.teams.indexOf(w.user) >= 0 ? ' · du bist dabei' : '') + '.</p></div>' + top + '</div>' +
+      UI.tabs('tab', [['table', 'Ligaphase'], ['fixtures', 'Spieltage'], ['ko', 'K.-o.-Runde']], tab) + body;
+  }
+
   UI.V.comp = function () {
-    const w = UI.world; const c = UI.user(); const tier = +(UI.p.tier || (c.tier <= 3 ? c.tier : 3)); const tab = UI.p.tab || 'table'; const L = w.leagues[tier]; let body = '';
-    const top = '<div class="row"><label class="f">Wettbewerb<select data-c="compTier">' + UI.opt([[1, 'Bundesliga'], [2, '2. Bundesliga'], [3, '3. Liga']], tier) + '</select></label></div>';
+    const w = UI.world; const c = UI.user();
+    if (w.euro && FM.Euro.COMPS[UI.p.tier]) return euroView(UI.p.tier);
+    const tier = [1, 2, 3].indexOf(+UI.p.tier) >= 0 ? +UI.p.tier : (c.tier <= 3 ? c.tier : 3); const tab = UI.p.tab || 'table'; const L = w.leagues[tier]; let body = '';
+    const top = '<div class="row"><label class="f">Wettbewerb<select data-c="compTier">' + UI.opt(compOptions(w), tier) + '</select></label></div>';
     if (tab === 'table') {
       const t = Cal.table(w, tier);
       body = '<div class="card flat"><div class="tw"><table class="t"><thead><tr><th></th><th>#</th><th>Verein</th><th class="r">Sp</th><th class="r">S</th><th class="r">U</th><th class="r">N</th><th class="r">Tore</th><th class="r">Diff</th><th class="r">Pkt</th><th>Form</th></tr></thead><tbody>' +
@@ -72,6 +105,6 @@
     return '<div class="head"><div><h1>Wettbewerbe</h1><p>Tabellen werden direkt aus den Ergebnissen berechnet – was im Spielplan steht, steht auch in der Tabelle.</p></div>' + top + '</div>' +
       UI.tabs('tab', [['table', 'Tabelle'], ['fixtures', 'Spieltage'], ['mine', 'Mein Spielplan'], ['cup', 'Pokal & Relegation'], ['stats', 'Statistik']], tab) + body;
   };
-  UI.C.compTier = (v) => { UI.p.tier = +v; UI.p.md = null; UI.render(); };
+  UI.C.compTier = (v) => { UI.p.tier = FM.Euro.COMPS[v] ? v : +v; UI.p.md = null; if ((FM.Euro.COMPS[v] && ['table', 'fixtures', 'ko'].indexOf(UI.p.tab) < 0) || (!FM.Euro.COMPS[v] && UI.p.tab === 'ko')) UI.p.tab = 'table'; UI.render(); };
   UI.A.md = (d) => { UI.p.md = +d.v; UI.render(); };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -80,7 +80,9 @@ def league(title, tier):
 def parse_squad(w):
     m = re.search(r'\n==+\s*(Current squad|First[- ]team squad|Current first[- ]team squad|First team|Squad)\s*==+', w, flags=re.I)
     if m:
-        seg = w[m.end():]; nxt = re.search(r'\n==+[^=\n]+==+', seg); main = seg[:nxt.start()] if nxt else seg
+        seg = w[m.end():]; heads = list(re.finditer(r'\n==+[^=\n]+==+', seg)); main = seg[:heads[0].start()] if heads else seg
+        if 'player' not in main.lower() and heads:  # Überschrift direkt gefolgt von einer Unterüberschrift ("First-team squad")
+            main = seg[heads[0].end():heads[1].start()] if len(heads) > 1 else seg[heads[0].end():]
     else:
         m = re.search(r'==+\s*Players\s*==+', w); seg = w[m.start() if m else 0:]
         stop = re.search(r'==+\s*(Out on loan|Players out on loan|On loan|Retired numbers|Reserve|Youth|Notable|Former|.* II[^=]*|Second team)[^=]*==+', seg)
@@ -142,6 +144,40 @@ def main():
         if not os.path.exists(fn):
             open(fn, 'w', encoding='utf-8').write(page(PREV + ' ' + lg) or '')
     print('Fertig:', len(info), 'Spielerartikel', flush=True)
+    euro()
+
+
+def euro():
+    """Teilnehmer der drei Europapokal-Ligaphasen, ihre Kader und (nur Champions League) die Spielerartikel"""
+    d = os.path.join(OUT, 'euro'); os.makedirs(d, exist_ok=True)
+    tj = os.path.join(d, 'euroteams.json'); cj = os.path.join(d, 'clubraw.json.gz'); pj = os.path.join(d, 'playerraw.json.gz')
+    if os.path.exists(tj):
+        teams = json.load(open(tj, encoding='utf-8'))
+    else:
+        teams = {}
+        for key, comp in (('CL', 'Champions League'), ('EL', 'Europa League'), ('ECL', 'Conference League')):
+            w = page('%s UEFA %s league phase' % (SEASON, comp)) or ''
+            a = w.find('==Teams and seeding=='); b = w.find('==Draw==')
+            teams[key] = [dict(nat=m.group(1), page=m.group(2).strip(), name=(m.group(3) or m.group(2)).strip(), coef=float(m.group(4)))
+                          for m in re.finditer(r'fbaicon\|(\w+)\}\}\s*\[\[([^\]|]+)(?:\|([^\]]+))?\]\][^\n]*\n\|\s*([\d.]+)', w[a:b])]
+        json.dump(teams, open(tj, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+    raw = json.load(gzip.open(cj, 'rt', encoding='utf-8')) if os.path.exists(cj) else {}
+    for key in ('CL', 'EL', 'ECL'):
+        for t in teams[key]:
+            if t['nat'] != 'GER' and not raw.get(t['page']):
+                raw[t['page']] = page(t['page']) or ''; print(t['page'], len(raw[t['page']]), flush=True)
+    json.dump(raw, gzip.open(cj, 'wt', encoding='utf-8'), ensure_ascii=False)
+    info = json.load(gzip.open(pj, 'rt', encoding='utf-8')) if os.path.exists(pj) else {}
+    titles = sorted({p['page'] for t in teams['CL'] if t['nat'] != 'GER' for p in parse_squad(raw.get(t['page'], ''))[:30] if p['page']})
+    n = 0
+    for t in titles:
+        if t in info:
+            continue
+        w = page(t); info[t] = {'len': len(w or ''), 'text': (w or '')[:9000]}; n += 1
+        if n % 50 == 0:
+            print(len(info), '/', len(titles), flush=True); json.dump(info, gzip.open(pj, 'wt', encoding='utf-8'), ensure_ascii=False)
+    json.dump(info, gzip.open(pj, 'wt', encoding='utf-8'), ensure_ascii=False)
+    print('Europapokal fertig:', len(raw), 'Klubs,', len(info), 'Spielerartikel', flush=True)
 
 
 if __name__ == '__main__':

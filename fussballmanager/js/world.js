@@ -9,6 +9,7 @@
     if (tier === 1) return 4e6 + Math.pow(Math.max(0, rep - 55), 2) * 30e3;
     if (tier === 2) return 1.5e6 + Math.max(0, rep - 42) * 130e3;
     if (tier === 3) return 0.3e6 + Math.max(0, rep - 32) * 22e3;
+    if (tier === 9) return 5e6 + Math.pow(Math.max(0, rep - 50), 2) * 40e3;
     return 0.1e6;
   }
 
@@ -22,11 +23,36 @@
       buildS: null, buildI: null, board: { trust: 60, goal: '', target: 0, warned: 0 }, fin: null, cond: 2, tac: 2,
       lastPos: d.lastPos || 10, lastTier: d.lastTier || tier, euro: 0, wageF: 1, rb: d.rb || 0,
     };
+    if (tier === 9) { c.nat = d.nat; c.ec0 = d.ec0; c.base = d.lvl; c.city = c.city || ''; }
     world.clubs[c.id] = c;
     return c;
   }
 
   const AM_TEMPLATE = ['TW', 'TW', 'IV', 'IV', 'IV', 'IV', 'LV', 'LV', 'RV', 'RV', 'DM', 'DM', 'ZM', 'ZM', 'ZM', 'OM', 'LA', 'LA', 'RA', 'RA', 'ST', 'ST', 'ST'];
+
+  /* Ausländische Europapokal-Klubs (echte Kader, soweit die Quelle sie hergibt) in die Spielwelt setzen */
+  W.addIntl = function (world) {
+    const DB = FM.DB; const made = [];
+    for (const d of DB.intl || []) {
+      if (world.clubs[d.id]) continue;
+      const c = mkClub(world, d, 9); made.push(c);
+      if (d.p.length) {
+        for (const r of d.p) {
+          if (world.nameSet) world.nameSet[r[0]] = 1;
+          const age = DB.season - r[4];
+          const p = Gen.makePlayer(world, { name: r[0], nat: r[1], pos: r[2], pos2: r[3], by: r[4], bm: r[5], ovr: r[6], pot: r[7], no: r[8], club: c.id, tr: Gen.traitsFor(r[0], r[2], age, !!r[9]), until: world.season + 1 + (FM.hash(r[0] + 'c') % 4) });
+          c.squad.push(p.id);
+        }
+      } else {
+        for (const pos of AM_TEMPLATE) { const p = Gen.genPlayer(world, { pos, mean: d.lvl - 3, sd: 3, minAge: 19, maxAge: 32, club: c.id, nat: d.nat }); c.squad.push(p.id); }
+      }
+      Team.ensureDepth(world, c, true); c.formation = Team.chooseFormation(world, c); c.wageF = 1.4;
+      for (const p of Team.squad(world, c)) p.wage = U.roundMoney(p.wage * 1.4);
+    }
+    if (!world.euroQual && DB.euro) world.euroQual = JSON.parse(JSON.stringify(DB.euro));
+    if (!world.euroQuota && DB.euro) world.euroQuota = { CL: DB.euro.CL.length, EL: DB.euro.EL.length, ECL: DB.euro.ECL.length };
+    return made;
+  };
 
   W.create = function (opts) {
     const DB = FM.DB;
@@ -34,7 +60,7 @@
       v: FM.SAVE_VERSION, a: (opts.seed != null ? opts.seed : (Date.now() ^ (Math.random() * 1e9))) | 0, season: DB.season, week: 1, stage: 0,
       user: opts.clubId, manager: opts.manager || 'Trainer', players: {}, nextPid: 1, nextOid: 1, clubs: {}, leagues: {}, cup: null, releg: null, friendlies: {},
       news: [], ticker: [], offers: [], youthOffer: [], history: [], nameSet: {}, cal: Cal.build(), lastMatch: null, lastOthers: null, pendingEvent: null, sacked: null,
-      sponsorOffers: null, lastSeason: null, over: 0, created: DB.built,
+      sponsorOffers: null, lastSeason: null, over: 0, created: DB.built, euro: null, euroQual: null, euroQuota: null, euroStarted: 0,
     };
     R.use(world);
     for (const d of DB.clubs) {
@@ -51,11 +77,12 @@
       for (const pos of AM_TEMPLATE) { const p = Gen.genPlayer(world, { pos, mean: d.lvl, sd: 3, minAge: 19, maxAge: 32, club: c.id, nat: R.chance(0.85) ? 'GER' : null }); c.squad.push(p.id); }
     }
     for (const id in world.clubs) { const c = world.clubs[id]; Team.ensureDepth(world, c, true); c.formation = Team.chooseFormation(world, c); }
+    W.addIntl(world);
     world.season--; // startSeason zählt hoch und richtet Spielplan, Pokal, Ziele ein
     FM.Game.startSeasonInternal(world);
     // Gehaltsniveau je Klub an die wirtschaftliche Kraft anpassen (rund die Hälfte der Einnahmen)
     for (const id in world.clubs) {
-      const c = world.clubs[id]; const bill = Team.wageBill(world, c); if (!bill) continue;
+      const c = world.clubs[id]; const bill = Team.wageBill(world, c); if (!bill || c.tier === 9) continue;
       const k = U.clamp(E.yearIncome(world, c) * 0.55 / bill, 0.6, 2.4);
       c.wageF = U.round(k, 3);
       for (const p of Team.squad(world, c)) p.wage = U.roundMoney(p.wage * k);
@@ -146,6 +173,7 @@
     w.nameSet = {}; for (const id in w.players) w.nameSet[w.players[id].name] = 1;
     w.offers = w.offers || []; w.ticker = w.ticker || []; w.youthOffer = w.youthOffer || []; w.friendlies = w.friendlies || {}; w.history = w.history || []; w.news = w.news || [];
     w.nextOid = w.nextOid || 1; w.v = FM.SAVE_VERSION;
+    if (w.euro === undefined) w.euro = null; // Stände von vor dem Europapokal: Europa startet mit der nächsten Saison
   };
   S.save = function (world, slot) {
     const text = S.serialize(world); const ls = store(); const key = S.KEY + slot;

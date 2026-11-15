@@ -21,11 +21,15 @@
     JPN: { f: ['Haruto', 'Yuto', 'Sota', 'Ren', 'Kaito', 'Daichi', 'Takumi', 'Ryo', 'Shota', 'Koki'], l: ['Sato', 'Suzuki', 'Takahashi', 'Tanaka', 'Watanabe', 'Ito', 'Nakamura', 'Kobayashi', 'Yoshida', 'Yamada'] },
     BRA: { f: ['Gabriel', 'Lucas', 'Matheus', 'Rafael', 'Thiago', 'Bruno', 'Vinícius', 'Caio', 'Igor', 'Wesley'], l: ['Silva', 'Santos', 'Oliveira', 'Souza', 'Pereira', 'Costa', 'Ferreira', 'Almeida', 'Ribeiro', 'Carvalho'] },
     USA: { f: ['Tyler', 'Brandon', 'Ethan', 'Josh', 'Caleb', 'Gio', 'Ricardo', 'Cole', 'Aidan', 'Malik'], l: ['Johnson', 'Miller', 'Davis', 'Anderson', 'Thompson', 'Reyes', 'Morgan', 'Bennett', 'Carter', 'Sullivan'] },
+    ITA: { f: ['Lorenzo', 'Matteo', 'Alessandro', 'Federico', 'Davide', 'Luca', 'Simone', 'Andrea', 'Giacomo', 'Nicolò', 'Riccardo', 'Tommaso'], l: ['Rossi', 'Bianchi', 'Romano', 'Colombo', 'Ricci', 'Marino', 'Greco', 'Conti', 'De Luca', 'Mancini', 'Galli', 'Ferrara'] },
+    POR: { f: ['João', 'Diogo', 'Rúben', 'Tiago', 'Gonçalo', 'André', 'Miguel', 'Rafael', 'Nuno', 'Bruno'], l: ['Silva', 'Santos', 'Ferreira', 'Pereira', 'Costa', 'Carvalho', 'Almeida', 'Gomes', 'Lopes', 'Teixeira'] },
     GHA: { f: ['Kwame', 'Kofi', 'Yaw', 'Emmanuel', 'Daniel', 'Samuel', 'Ibrahim', 'Abdul', 'Ernest', 'Felix'], l: ['Mensah', 'Owusu', 'Boateng', 'Asante', 'Appiah', 'Osei', 'Amoah', 'Addo', 'Agyemang', 'Frimpong'] },
   };
   const NAT_POOL = [['GER', 62], ['TUR', 4], ['POL', 4], ['FRA', 5], ['ESP', 2], ['ENG', 2], ['NED', 4], ['CRO', 4], ['DEN', 4], ['JPN', 3], ['BRA', 2], ['USA', 2], ['GHA', 2]];
   const FOREIGN_POOL = NAT_POOL.filter((n) => n[0] !== 'GER');
-  const ALIAS = { AUT: 'GER', SUI: 'GER' };
+  const ALIAS = { AUT: 'GER', SUI: 'GER', LUX: 'GER', BEL: 'NED', SCO: 'ENG', WAL: 'ENG', IRL: 'ENG', NIR: 'ENG', GIB: 'ENG', NOR: 'DEN', SWE: 'DEN', FIN: 'DEN', ISL: 'DEN',
+    SRB: 'CRO', BIH: 'CRO', SVN: 'CRO', MNE: 'CRO', MKD: 'CRO', CZE: 'POL', SVK: 'POL', UKR: 'POL', LTU: 'POL', LAT: 'POL', LVA: 'POL', AND: 'ESP', ARG: 'ESP', URU: 'ESP', COL: 'ESP', MEX: 'ESP',
+    GRE: 'ITA', CYP: 'ITA', ALB: 'ITA', ROU: 'ITA', ROM: 'ITA', BUL: 'CRO', HUN: 'POL', AZE: 'TUR', KAZ: 'TUR', GEO: 'TUR', ARM: 'TUR', ISR: 'TUR', NGA: 'GHA', CIV: 'GHA', SEN: 'GHA', KOR: 'JPN', CAN: 'USA' };
 
   G.randomName = function (nat) {
     const pool = NAMES[nat] || NAMES[ALIAS[nat]] || NAMES.GER;

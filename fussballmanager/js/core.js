@@ -162,6 +162,7 @@
   };
 
   FM.NAT_NAME = {
+    GIB: 'Gibraltar', AND: 'Andorra', LAT: 'Lettland', ROM: 'Rumänien', SMR: 'San Marino',
     GER: 'Deutschland', AUT: 'Österreich', SUI: 'Schweiz', FRA: 'Frankreich', ENG: 'England', ESP: 'Spanien', ITA: 'Italien', NED: 'Niederlande', BEL: 'Belgien', POR: 'Portugal',
     DEN: 'Dänemark', SWE: 'Schweden', NOR: 'Norwegen', FIN: 'Finnland', ISL: 'Island', POL: 'Polen', CZE: 'Tschechien', SVK: 'Slowakei', HUN: 'Ungarn', CRO: 'Kroatien', SRB: 'Serbien',
     BIH: 'Bosnien-Herzegowina', SVN: 'Slowenien', MNE: 'Montenegro', MKD: 'Nordmazedonien', ALB: 'Albanien', KOS: 'Kosovo', KVX: 'Kosovo', GRE: 'Griechenland', TUR: 'Türkei', ROU: 'Rumänien', BUL: 'Bulgarien',

@@ -15,7 +15,9 @@
     if (st.kind === 'slot') {
       if (st.userItem) { UI.go('prematch', { slot: st.slot }); return; }
       const ctx = G.runSlot(w, st.slot);
-      UI.view = 'office'; UI.resultsModal(ctx.others, st.def);
+      // Europapokal ohne eigene Beteiligung: nur die Spiele der deutschen Klubs zeigen, der Rest steht unter „Wettbewerbe“
+      const list = st.def.t === 'euro' ? ctx.others.filter((o) => w.clubs[o.h].tier !== 9 || w.clubs[o.a].tier !== 9) : ctx.others;
+      UI.view = 'office'; UI.resultsModal(list, st.def);
     } else if (st.kind === 'endWeek') {
       G.endWeek(w); UI.autosave();
       if (w.sacked) { UI.go('sacked'); return; }
@@ -30,7 +32,7 @@
     for (const o of others) (groups[o.comp] = groups[o.comp] || []).push(o);
     const keys = Object.keys(groups);
     const body = keys.length ? keys.map((k) => '<div class="stack"><h3>' + h(k) + '</h3><div class="conf" style="font-size:14px">' + groups[k].map((o) => '<span class="h">' + UI.clubName(o.h, 1) + '</span><span class="s">' + o.hg + ':' + o.ag + '</span><span class="a">' + UI.clubName(o.a, 1) + '</span>').join('') + '</div></div>').join('') : '<p class="muted">Keine Partien.</p>';
-    UI.modal(def && def.t === 'cup' ? 'Pokal: Ergebnisse' : 'Ergebnisse', '<p class="muted">Deine Mannschaft hatte spielfrei.</p>' + body + '<div class="row" style="justify-content:flex-end"><button class="btn pri" data-a="closeModal">Weiter</button></div>', { wide: keys.length > 1 });
+    UI.modal(def && def.t === 'cup' ? 'Pokal: Ergebnisse' : def && def.t === 'euro' ? 'Europapokal: die deutschen Klubs' : 'Ergebnisse', '<p class="muted">' + (def && def.t === 'euro' ? 'Alle Ergebnisse und Tabellen findest du unter „Wettbewerbe“.' : 'Deine Mannschaft hatte spielfrei.') + '</p>' + body + '<div class="row" style="justify-content:flex-end"><button class="btn pri" data-a="closeModal">Weiter</button></div>', { wide: keys.length > 1 });
     void w;
   };
 
@@ -44,9 +46,9 @@
     const oppL = Team.autoLineup(w, opp, opp.formation, fr); const oSlots = FM.FORMATIONS[oppL.formation];
     const list = (LL, sl) => '<div class="tw"><table class="t"><tbody>' + LL.xi.map((id, i) => { const p = w.players[id]; return '<tr><td>' + UI.pos(sl[i].pos) + '</td><td class="name">' + (p ? h(p.name) : '<span class="bad">nicht besetzt</span>') + '</td><td class="c">' + (p ? UI.ovr(p.ovr) : '') + '</td><td>' + (p ? UI.bar(p.fit) : '') + '</td></tr>'; }).join('') + '</tbody></table></div>';
     const tab = c.tier <= 3 && opp.tier <= 3;
-    return '<div class="head"><div><h1>' + h(it.comp) + '</h1><p>' + (it.kind === 'league' ? it.md + '. Spieltag' : it.kind === 'cup' ? Cal.CUP_ROUND[it.r] : it.kind === 'rel' ? (it.leg ? 'Rückspiel' : 'Hinspiel') : 'Testspiel – ohne Wertung, Sperren zählen nicht') + ' · ' + Cal.fmt(Cal.date(w, st.slot === 'mid' ? 2 : 5)) + ' · ' + (it.neutral ? 'Olympiastadion Berlin' : h(w.clubs[f.h].stadium)) + '</p></div></div>' +
+    return '<div class="head"><div><h1>' + h(it.comp) + '</h1><p>' + (it.kind === 'league' ? it.md + '. Spieltag' : it.kind === 'euro' ? it.label : it.kind === 'cup' ? Cal.CUP_ROUND[it.r] : it.kind === 'rel' ? (it.leg ? 'Rückspiel' : 'Hinspiel') : 'Testspiel – ohne Wertung, Sperren zählen nicht') + ' · ' + Cal.fmt(Cal.date(w, st.slot === 'mid' ? 2 : 5)) + ' · ' + (it.neutral ? (it.kind === 'euro' ? 'Finalstadion, neutraler Platz' : 'Olympiastadion Berlin') : h(w.clubs[f.h].stadium)) + '</p></div></div>' +
       '<div class="score"><div class="side">' + UI.crest(w.clubs[f.h], 'lg') + '<b>' + h(w.clubs[f.h].short) + '</b></div><div class="mid"><div class="res">–:–</div><div class="clock">' + (tab ? Cal.posOf(w, f.h) + '. gegen ' + Cal.posOf(w, f.a) + '.' : 'Anstoß') + '</div></div><div class="side a">' + UI.crest(w.clubs[f.a], 'lg') + '<b>' + h(w.clubs[f.a].short) + '</b></div></div>' +
-      (it.agg ? '<p class="msg">Hinspiel: ' + UI.clubName(it.rl.legs[0].h, 1) + ' ' + it.rl.legs[0].hg + ':' + it.rl.legs[0].ag + ' ' + UI.clubName(it.rl.legs[0].a, 1) + '. Bei Gleichstand nach beiden Spielen folgen Verlängerung und Elfmeterschießen.</p>' : '') +
+      (it.agg ? '<p class="msg">Hinspiel: ' + UI.clubName((it.rl || it.tie).legs[0].h, 1) + ' ' + (it.rl || it.tie).legs[0].hg + ':' + (it.rl || it.tie).legs[0].ag + ' ' + UI.clubName((it.rl || it.tie).legs[0].a, 1) + '. Bei Gleichstand nach beiden Spielen folgen Verlängerung und Elfmeterschießen.</p>' : '') +
       (probs.length ? '<div class="stack">' + probs.map((x) => '<div class="todo ' + (x.warn ? '' : 'bad') + '"><span>' + h(x.text) + '</span></div>').join('') + '<div class="row"><button class="btn pri" data-a="fixLineup">Aufstellung automatisch korrigieren</button><button class="btn" data-a="nav" data-v="lineup">Selbst umstellen</button></div></div>' : '') +
       '<div class="row"><button class="btn go" data-a="kickoff"' + (hard.length ? ' disabled' : '') + '>Anpfiff ▸</button><button class="btn" data-a="instant"' + (hard.length ? ' disabled' : '') + '>Sofortergebnis</button><button class="btn" data-a="nav" data-v="lineup">Aufstellung &amp; Taktik</button></div>' +
       '<div class="grid g2"><div class="card flat"><h3>' + h(c.short) + ' <small>' + (L ? L.formation : '') + '</small></h3>' + (L ? list(L, slots) : '') + '</div><div class="card flat"><h3>' + h(opp.short) + ' <small>voraussichtlich ' + oppL.formation + (opp.coach ? ' · Trainer ' + h(opp.coach) : '') + '</small></h3>' + list(oppL, oSlots) + '</div></div>';
@@ -90,7 +92,7 @@
     const duel = (l, a, b) => { const s = a + b || 1; return '<div class="label c">' + l + '</div><div class="duel"><span>' + a + '</span><span class="track"><i style="width:' + Math.round(100 * a / s) + '%"></i><b></b></span><span>' + b + '</span></div>'; };
     const clock = m.done ? 'Abpfiff' : m.phase === 'pre' ? 'Gleich geht\'s los' : m.phase === 'ht' ? 'Halbzeit' : M.minLabel(m) + '. Minute';
     const league = lv.item.kind === 'league';
-    const others = lv.ctx.others.filter((o) => (league ? o.tier === lv.item.tier : true)).slice(0, 12);
+    const others = lv.ctx.others.filter((o) => (league ? o.tier === lv.item.tier : lv.item.ec ? o.ec === lv.item.ec : true)).slice(0, lv.item.ec ? 17 : 12);
     const cl = m.done ? 200 : m.clock || 0;
     const ctrl = m.done
       ? '<button class="btn go" data-a="toReport">Zum Spielbericht ▸</button>'
@@ -180,9 +182,10 @@
     return '<div class="start"><div class="start-in">' +
       '<div><h1 class="title" style="font-size:clamp(44px,9vw,92px)">Saison ' + Cal.seasonLabel(s.season) + '<span>Abpfiff</span></h1></div><div class="pitchline"></div>' +
       (u ? '<div class="card"><h3>' + UI.clubName(u.cid) + ' <small>' + h(Cal.LEAGUE_NAME[u.tier]) + '</small></h3><div class="row" style="gap:22px"><div><div class="label">Platz</div><div class="big">' + u.pos + '.</div></div><div><div class="label">Punkte</div><div class="big">' + u.pts + '</div></div><div style="flex:1;min-width:220px"><div class="label">Ziel: ' + h(u.goal) + '</div><p>' + h(u.verdict) + '</p>' + (u.moved ? '<p class="' + (u.moved < u.tier ? 'good' : 'bad') + '"><b>' + (u.moved < u.tier ? 'Aufstieg in die ' : 'Abstieg in die ') + h(Cal.LEAGUE_NAME[u.moved]) + '!</b></p>' : '') + '</div></div></div>' : '') +
-      '<div class="grid g3"><div class="card"><h3>Titel</h3><dl class="kv"><dt>Deutscher Meister</dt><dd>' + UI.clubName(s.champs[1], 1) + '</dd><dt>Pokalsieger</dt><dd>' + UI.clubName(s.cup, 1) + '</dd><dt>Meister 2. Bundesliga</dt><dd>' + UI.clubName(s.champs[2], 1) + '</dd><dt>Meister 3. Liga</dt><dd>' + UI.clubName(s.champs[3], 1) + '</dd></dl></div>' +
+      '<div class="grid g3"><div class="card"><h3>Titel</h3><dl class="kv"><dt>Deutscher Meister</dt><dd>' + UI.clubName(s.champs[1], 1) + '</dd><dt>Pokalsieger</dt><dd>' + UI.clubName(s.cup, 1) + '</dd><dt>Meister 2. Bundesliga</dt><dd>' + UI.clubName(s.champs[2], 1) + '</dd><dt>Meister 3. Liga</dt><dd>' + UI.clubName(s.champs[3], 1) + '</dd>' + (s.euro && s.euro.CL ? '<dt>Champions League</dt><dd>' + UI.clubName(s.euro.CL, 1) + '</dd><dt>Europa League</dt><dd>' + UI.clubName(s.euro.EL, 1) + '</dd><dt>Conference League</dt><dd>' + UI.clubName(s.euro.ECL, 1) + '</dd>' : '') + '</dl></div>' +
       '<div class="card"><h3>Torjägerkanonen</h3>' + s.scorers.map((x) => '<div class="row between"><span>' + h(x.name) + ' <span class="muted">' + UI.clubName(x.club, 1) + '</span></span><b>' + x.go + '</b></div>').join('') + '</div>' +
       '<div class="card"><h3>Auf- und Absteiger</h3>' + mv(s.up, 'up') + mv(s.down, 'down') + '</div></div>' +
+      (s.euroQual ? '<div class="card"><h3>Europapokal ' + Cal.seasonLabel(w.season) + ' <small>deutsche Teilnehmer</small></h3><dl class="kv">' + FM.Euro.ORDER.map((k) => '<dt>' + FM.Euro.COMPS[k].n + '</dt><dd>' + (s.euroQual[k] || []).map((c) => UI.clubName(c, 1)).join(', ') + '</dd>').join('') + '</dl></div>' : '') +
       '<div class="row"><button class="btn go" data-a="newSeason">Auf in die Saison ' + Cal.seasonLabel(w.season) + ' ▸</button></div>' +
       '</div></div>';
   };

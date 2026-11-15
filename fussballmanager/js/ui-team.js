@@ -42,7 +42,7 @@
   function playerHead(p) {
     const w = UI.world; const c = p.club ? w.clubs[p.club] : null;
     return '<div class="row" style="gap:14px;align-items:flex-start"><div class="big">' + p.ovr + '</div><div class="stack" style="gap:3px;flex:1;min-width:200px"><div>' + UI.pos(p.pos) + (p.pos2 ? ' ' + UI.pos(p.pos2) : '') + ' · ' + FM.age(w, p) + ' Jahre · ' + h(FM.NAT_NAME[p.nat] || p.nat) + (p.gen ? ' <span class="chip" title="Dieser Spieler wurde vom Spiel erzeugt">fiktiv</span>' : '') + '</div>' +
-      '<div class="muted">' + (c ? UI.crest(c, 'sm') + ' ' + h(c.name) : p.ab ? 'Ausland (' + h(p.ab) + ')' : p.yo ? 'Eigene Jugend' : 'vereinslos') + '</div><div>Talent ' + UI.stars(p.pot) + '</div></div></div>' +
+      '<div class="muted">' + (c ? UI.crest(c, 'sm') + ' ' + h(c.name) + (c.tier === 9 ? ' (' + h(UI.league(c)) + ')' : '') : p.ab ? 'Ausland (' + h(p.ab) + ')' : p.yo ? 'Eigene Jugend' : 'vereinslos') + '</div><div>Talent ' + UI.stars(p.pot) + '</div></div></div>' +
       '<div class="grid g3"><div><div class="label">Frische</div>' + UI.bar(p.fit, 1) + '</div><div><div class="label">Form</div>' + UI.bar(p.form, 1) + '</div><div><div class="label">Moral</div>' + UI.bar(p.mor, 1) + '</div></div>' +
       (p.tr.length ? '<div class="stack" style="gap:4px">' + p.tr.map((t) => '<div><span class="chip ' + (FM.TRAITS[t].good ? 'good' : 'bad') + '">' + h(FM.TRAITS[t].n) + '</span> <span class="muted">' + h(FM.TRAITS[t].d) + '</span></div>').join('') + '</div>' : '') +
       '<dl class="kv"><dt>Marktwert</dt><dd>' + U.money(p.val) + '</dd>' + (p.club ? '<dt>Gehalt pro Jahr</dt><dd>' + U.money(p.wage) + '</dd><dt>Vertrag bis</dt><dd>06/' + p.until + '</dd>' : '') +
@@ -185,7 +185,7 @@
       for (const id in w.players) {
         const p = w.players[id]; if (p.club === c.id || p.yo) continue;
         const st = X.status(p);
-        if (src === 'free' && st !== 'free') continue; if (src === 'abroad' && st !== 'abroad') continue; if (src === 'listed' && !p.listed) continue; if (src === 'club' && st !== 'club') continue;
+        if (src === 'free' && st !== 'free') continue; if (src === 'abroad' && st !== 'abroad') continue; if (src === 'listed' && !p.listed) continue; if (src === 'club' && (st !== 'club' || w.clubs[p.club].tier === 9)) continue; if (src === 'intl' && !(st === 'club' && w.clubs[p.club].tier === 9)) continue;
         if (pos && p.pos !== pos && !(pos.length === 1 && FM.POS_GROUP[p.pos] === pos)) continue;
         if (p.ovr < minOvr) continue; if (maxVal && p.val > maxVal) continue; if (FM.age(w, p) > maxAge) continue;
         if (name && p.name.toLowerCase().indexOf(name) < 0) continue;
@@ -193,7 +193,7 @@
       }
       const total = list.length; list = sorted(list, f.sort || 'ovr', w).slice(0, 80);
       body = '<div class="card"><div class="row">' +
-        '<label class="f">Herkunft<select data-c="flt" data-k="src">' + UI.opt([['all', 'Alle'], ['club', 'Unter Vertrag'], ['listed', 'Transferliste'], ['free', 'Vereinslos'], ['abroad', 'Ausland']], src) + '</select></label>' +
+        '<label class="f">Herkunft<select data-c="flt" data-k="src">' + UI.opt([['all', 'Alle'], ['club', 'Deutsche Klubs'], ['intl', 'Europäische Klubs'], ['listed', 'Transferliste'], ['free', 'Vereinslos'], ['abroad', 'Sonstiges Ausland']], src) + '</select></label>' +
         '<label class="f">Position<select data-c="flt" data-k="fpos">' + UI.opt([['', 'Alle'], ['T', 'Tor'], ['A', 'Abwehr'], ['M', 'Mittelfeld'], ['S', 'Angriff']].concat(FM.POS.map((x) => [x, x])), pos) + '</select></label>' +
         '<label class="f">Mindeststärke<select data-c="flt" data-k="minOvr">' + UI.opt([[0, 'egal'], [55, '55'], [60, '60'], [65, '65'], [70, '70'], [75, '75'], [80, '80'], [85, '85']], minOvr) + '</select></label>' +
         '<label class="f">Höchstalter<select data-c="flt" data-k="maxAge">' + UI.opt([[40, 'egal'], [19, '19'], [21, '21'], [23, '23'], [26, '26'], [29, '29']], maxAge) + '</select></label>' +

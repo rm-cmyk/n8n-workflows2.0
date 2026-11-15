@@ -5,15 +5,16 @@
   const E = (FM.Econ = {});
 
   E.WPS = 47; // Abrechnungswochen je Saison
-  E.TV = { 1: 46e6, 2: 12.5e6, 3: 1.35e6, 4: 0.08e6 };
-  E.TICKET = { 1: 36, 2: 22, 3: 14, 4: 9 };
-  const MERCH = { 1: 4.6, 2: 2.3, 3: 1.1, 4: 0.5 };       // € je Fan und Woche
-  const STAFF = { 1: 9e6, 2: 3e6, 3: 0.9e6, 4: 0.25e6 };   // Trainerstab, Geschäftsstelle, Reisen
-  const TIERF = { 1: 1, 2: 0.6, 3: 0.35, 4: 0.2 };
-  E.EURO = [38e6, 32e6, 30e6, 28e6, 12e6, 6e6];             // pauschale Europapokal-Einnahmen nach Vorjahresplatz
+  E.TV = { 1: 46e6, 2: 12.5e6, 3: 1.35e6, 4: 0.08e6, 9: 46e6 };
+  E.TICKET = { 1: 36, 2: 22, 3: 14, 4: 9, 9: 36 };
+  const MERCH = { 1: 4.6, 2: 2.3, 3: 1.1, 4: 0.5, 9: 4.6 };       // € je Fan und Woche
+  const STAFF = { 1: 9e6, 2: 3e6, 3: 0.9e6, 4: 0.25e6, 9: 9e6 };   // Trainerstab, Geschäftsstelle, Reisen
+  const TIERF = { 1: 1, 2: 0.6, 3: 0.35, 4: 0.2, 9: 1 };
+  const CATER = { 1: 5, 2: 4, 3: 3, 4: 2, 9: 5 };                  // Verzehr je Zuschauer
   E.CUP_PRIZE = [0.22e6, 0.43e6, 0.86e6, 1.7e6, 3.4e6, 4.3e6];
+  E.CATER = CATER;
   E.CATS = {
-    tickets: 'Zuschauereinnahmen', tv: 'TV-Gelder', sponsor: 'Sponsoring', merch: 'Fanartikel', transIn: 'Transfererlöse', prize: 'Prämien', euro: 'Europapokal (pauschal)', other: 'Sonstiges',
+    tickets: 'Zuschauereinnahmen', tv: 'TV-Gelder', sponsor: 'Sponsoring', merch: 'Fanartikel', transIn: 'Transfererlöse', prize: 'Prämien', euro: 'Europapokal-Prämien', other: 'Sonstiges',
     wages: 'Spielergehälter', staff: 'Personal & Betrieb', upkeep: 'Stadion & Anlagen', transOut: 'Transferausgaben', build: 'Bauprojekte', interest: 'Zinsen', bonus: 'Handgelder & Abfindungen', misc: 'Sonstige Ausgaben',
   };
   E.INCOME = ['tickets', 'tv', 'sponsor', 'merch', 'transIn', 'prize', 'euro', 'other'];
@@ -53,13 +54,14 @@
     a *= U.clamp(Math.pow(def / Math.max(4, home.ticket || def), 1.2), 0.35, 1.5);
     if (kind === 'cup') a *= 1 + 0.05 * (cupRound || 0);
     else if (kind === 'rel') a *= 1.25;
+    else if (kind === 'euro') a *= 1.12;
     else if (kind === 'friendly') a *= 0.22;
     return Math.round(Math.min(home.cap, a * R.range(0.95, 1.05)));
   };
 
   E.matchIncome = function (world, home, att, kind) {
     const price = (home.ticket || E.TICKET[home.tier]) * (kind === 'friendly' ? 0.4 : 1);
-    const gross = att * (price + [0, 5, 4, 3, 2][home.tier]);
+    const gross = att * (price + CATER[home.tier]);
     E.add(world, home, 'tickets', gross);
     E.add(world, home, 'upkeep', -gross * 0.09);
     return gross;

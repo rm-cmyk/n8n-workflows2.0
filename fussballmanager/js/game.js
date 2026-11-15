@@ -28,6 +28,8 @@
         const f = rl.legs[def.leg]; if (!f || f.p) continue;
         items.push({ f, kind: 'rel', leg: def.leg, rl, comp: 'Relegation', knockout: def.leg === 1, agg: def.leg === 1 ? [rl.legs[0].ag, rl.legs[0].hg] : null });
       }
+    } else if (def.t === 'euro') {
+      for (const it of FM.Euro.slotItems(world, def)) items.push(it);
     } else if (def.t === 'friendly') {
       const f = world.friendlies[wk.w]; if (f && !f.p) items.push({ f, kind: 'friendly', comp: 'Testspiel', friendly: true });
     }
@@ -63,7 +65,7 @@
       if (G.isUserItem(world, it)) { userItem = it; continue; }
       const m = FM.Match.simulate(world, it.f, matchOpts(world, it, false));
       G.applyMatch(world, it, m);
-      others.push({ h: it.f.h, a: it.f.a, goals: m.goals.map((g) => [g[0], g[1]]), comp: it.comp, tier: it.tier || 0, hg: it.f.hg, ag: it.f.ag });
+      others.push({ h: it.f.h, a: it.f.a, goals: m.goals.map((g) => [g[0], g[1]]), comp: it.comp, tier: it.tier || 0, ec: it.ec || '', hg: it.f.hg, ag: it.f.ag });
     }
     const ctx = { slot: slotName, userItem, others, match: null };
     if (userItem) ctx.match = FM.Match.create(world, userItem.f, matchOpts(world, userItem, true));
@@ -77,6 +79,7 @@
     }
     const def = Cal.week(world)[ctx.slot];
     if (def && def.t === 'cup') cupAfterRound(world, def.r);
+    if (def && def.t === 'euro') FM.Euro.afterSlot(world, def);
     if (def && def.t === 'rel' && def.leg === 1) relegDecide(world);
     if (def && def.t === 'league') { if ([1, 2, 3].every((t) => world.leagues[t].rounds.every((rd) => rd.every((f) => f.p))) && !world.releg) setupReleg(world); }
     if (ctx.slot === 'mid') { // kurze Erholung zwischen Mittwoch und Samstag
@@ -140,7 +143,7 @@
         if (club.sponsor && club.sponsor.win && my > their) E.add(world, club, 'sponsor', club.sponsor.win);
         const exp = E.expectedPts(world, club, clubs[1 - si], si === 0 && !it.neutral);
         const pts = my > their ? 3 : my === their ? 1 : 0;
-        const w = it.kind === 'league' ? 1 : 1.4;
+        const w = it.kind === 'league' ? 1 : it.kind === 'euro' ? 1.2 : 1.4;
         club.fans = U.clamp(club.fans + (pts - exp) * 2.0 * w + (my >= 4 ? 1 : 0), 0, 100);
         club.board.trust = U.clamp(club.board.trust + (pts - exp) * 1.3 * w, 0, 100);
       }
@@ -267,7 +270,7 @@
   /* ---------- Wochenabschluss ---------- */
   G.endWeek = function (world) {
     const out = { events: [] };
-    for (const cid in world.clubs) { const club = world.clubs[cid]; E.weekly(world, club); E.buildTick(world, club); }
+    for (const cid in world.clubs) { const club = world.clubs[cid]; if (club.tier === 9) continue; E.weekly(world, club); E.buildTick(world, club); }
     weeklyPlayers(world);
     FM.Transfer.weekly(world);
     aiFinanceGuard(world);
@@ -307,7 +310,7 @@
   // KI-Klubs gehen nie pleite: bei Schieflage wird der wertvollste entbehrliche Spieler ins Ausland verkauft
   function aiFinanceGuard(world) {
     for (const cid in world.clubs) {
-      const club = world.clubs[cid]; if (cid === world.user) continue;
+      const club = world.clubs[cid]; if (cid === world.user || club.tier === 9) continue;
       const limit = -E.yearIncome(world, club) * 0.12;
       if (club.money < limit) {
         const sq = U.sortBy(Team.squad(world, club), (p) => p.val, true);
@@ -380,6 +383,10 @@
       const prize = t === 1 ? (19 - r.pos) * 0.6e6 : t === 2 ? (19 - r.pos) * 0.12e6 : (21 - r.pos) * 20e3;
       E.add(world, c, 'prize', prize);
     });
+    // Europapokal: Sieger dieser Saison und Startplätze für die nächste
+    sum.euro = FM.Euro.winners(world);
+    world.euroQual = FM.Euro.qualify(world, tabs[1], world.cup.winner);
+    sum.euroQual = world.euroQual;
     // Auf- und Abstieg
     const move = (cid, to, list) => { world.clubs[cid].tier = to; list.push({ cid, to }); };
     const rl1 = world.releg && world.releg[0], rl2 = world.releg && world.releg[1];
@@ -418,9 +425,10 @@
       sum.user = { cid: user.id, tier: uTier, pos: uRow.pos, pts: uRow.pts, goal: user.board.goal, verdict, moved: (sum.up.concat(sum.down).find((m) => m.cid === user.id) || {}).to || 0 };
       if (uRow.pos === 1) { user.fans = U.clamp(user.fans + 15, 0, 100); }
     }
-    world.history.push({ s: world.season, champs: sum.champs, cup: sum.cup, u: sum.user ? { cid: user.id, tier: uTier, pos: uRow.pos, pts: uRow.pts } : null, scorers: sum.scorers.map((s) => ({ tier: s.tier, name: s.name, club: s.club, go: s.go })) });
+    world.history.push({ s: world.season, champs: sum.champs, cup: sum.cup, euro: sum.euro, u: sum.user ? { cid: user.id, tier: uTier, pos: uRow.pos, pts: uRow.pts } : null, scorers: sum.scorers.map((s) => ({ tier: s.tier, name: s.name, club: s.club, go: s.go })) });
     world.lastSeason = sum;
     FM.Transfer.seasonEnd(world, sum);
+    FM.Euro.refreshIntl(world);
     // Entlassung zum Saisonende?
     const sackNow = uRow && user.board.trust < 12 && !world.sackGrace;
     startSeason(world);
@@ -440,16 +448,15 @@
       p.st = FM.Gen.blankStats(); p.yel = 0; p.sus = 0; p.fit = 100; p.inj = Math.max(0, p.inj - 7); if (!p.inj) p.injT = ''; p.bench = 0; p.form = U.clamp(50 + R.gauss() * 6, 20, 80);
     }
     for (const c of clubs) {
-      c.euro = c.lastTier === 1 && c.lastPos <= 6 && c.tier === 1 ? E.EURO[c.lastPos - 1] : 0;
-      if (c.euro) E.add(world, c, 'euro', c.euro);
+      c.euro = 0;
       c.fanbase = Math.round(c.fanbase * (0.97 + c.fans / 1600)); // Fanbasis wächst und schrumpft langsam mit der Stimmung
       c.rep = U.clamp(Math.round(c.rep * 0.9 + repTarget(world, c) * 0.1), 20, 99);
       if (c.id !== world.user) {
         c.formation = Team.chooseFormation(world, c);
         c.sponsor = { name: E.SPONSORS[FM.hash(c.id + world.season) % E.SPONSORS.length], base: U.roundMoney(E.sponsorBase(c)), win: 0, until: world.season };
-        aiInvest(world, c);
+        if (c.tier !== 9) aiInvest(world, c);
       } else {
-        const old = c.fin; c.finPrev = old; c.fin = {}; if (c.euro) c.fin.euro = c.euro;
+        const old = c.fin; c.finPrev = old; c.fin = {};
         if (c.sponsor && c.sponsor.until < world.season) c.sponsor = null;
         world.sponsorOffers = c.sponsor ? null : E.sponsorOffers(world, c);
         c.campDone = 0;
@@ -461,8 +468,10 @@
     const u = G.user(world);
     if (u) {
       Team.repair(world, u);
-      G.news(world, 'Saison ' + Cal.seasonLabel(world.season), 'Trainingsauftakt! Saisonziel des Vorstands: ' + u.board.goal + '.' + (u.euro ? ' Für die Europapokal-Teilnahme fließen pauschal ' + U.money(u.euro) + '.' : ''), 'board');
+      G.news(world, 'Saison ' + Cal.seasonLabel(world.season), 'Trainingsauftakt! Saisonziel des Vorstands: ' + u.board.goal + '.', 'board');
     }
+    if (!FM.Euro.intl(world).length && FM.World.addIntl) FM.World.addIntl(world); // ältere Spielstände: Europa nachrüsten
+    FM.Euro.init(world);
     weekStart(world);
   }
   G.startSeasonInternal = startSeason;

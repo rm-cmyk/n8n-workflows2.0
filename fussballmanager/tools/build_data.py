@@ -299,6 +299,229 @@ def prev_table(path):
     return {names[c]: (i + 1, st[c][0]) for i, c in enumerate(order)}
 
 
+# ---------------------------------------------------------------------------------------------------------
+# Europapokal: ausländische Klubs. Niveau (Stärke der ersten Elf) von Hand gesetzt, orientiert an
+# UEFA-Koeffizient und Liga. Schlüssel = Name in den Wikipedia-Teilnehmerlisten.
+INTL_LVL = {
+    'Paris Saint-Germain': 87.0, 'Real Madrid': 87.0, 'Liverpool': 86.0, 'Inter Milan': 84.5, 'Manchester City': 86.0, 'Arsenal': 86.5, 'Barcelona': 87.0,
+    'Atlético Madrid': 83.5, 'Roma': 80.5, 'Sporting CP': 80.0, 'Aston Villa': 81.5, 'Porto': 79.5, 'Manchester United': 81.5, 'Club Brugge': 77.5, 'Real Betis': 79.5,
+    'PSV Eindhoven': 78.5, 'Feyenoord': 77.5, 'Lille': 78.5, 'Bodø/Glimt': 75.0, 'Napoli': 83.0, 'Villarreal': 80.5, 'Fenerbahçe': 78.5, 'Shakhtar Donetsk': 76.0,
+    'Galatasaray': 79.5, 'Slavia Prague': 75.5, 'Slovan Bratislava': 71.0, 'AEK Athens': 74.5, 'LASK': 71.5, 'Como': 78.0, 'Lens': 77.5, 'Viking': 70.5, 'Sabah': 69.0,
+    'Benfica': 80.5, 'Juventus': 82.5, 'Milan': 82.5, 'Lyon': 78.5, 'AZ': 75.5, 'Olympiacos': 76.5, 'Real Sociedad': 79.0, 'Marseille': 80.0, 'Ferencváros': 73.0,
+    'Viktoria Plzeň': 73.0, 'Union Saint-Gilloise': 76.0, 'Dinamo Zagreb': 74.5, 'Red Bull Salzburg': 75.0, 'Celtic': 75.5, 'Sparta Prague': 74.5, 'Rennes': 77.0,
+    'Anderlecht': 74.5, 'Sturm Graz': 73.0, 'Lech Poznań': 72.5, 'Crystal Palace': 79.5, 'Bournemouth': 79.5, 'Sunderland': 77.0, 'Celje': 69.5, 'Jagiellonia Białystok': 71.0,
+    'Omonia': 70.0, 'Celta Vigo': 78.0, 'Beşiktaş': 77.0, 'Torreense': 68.0, "Hapoel Be'er Sheva": 70.5, 'NEC': 73.5, 'OFI': 69.5, 'Lillestrøm': 69.0, 'Levski Sofia': 70.0,
+    'Ararat-Armenia': 67.0, 'Atalanta': 81.5, 'Braga': 77.0, 'Ajax': 77.5, 'Monaco': 79.5, 'Copenhagen': 75.0, 'Midtjylland': 74.5, 'Red Star Belgrade': 74.5, 'Gent': 73.5,
+    'Panathinaikos': 75.0, 'Pafos': 71.5, 'Brighton & Hove Albion': 80.0, 'Lugano': 71.0, 'Getafe': 76.0, 'KuPS': 66.5, 'Twente': 75.0, 'Lincoln Red Imps': 60.0,
+    'Borac Banja Luka': 66.0, 'Sint-Truiden': 71.0, 'Brann': 71.5, 'Heart of Midlothian': 71.5, 'Kairat': 68.0, 'Trabzonspor': 75.5, 'Universitatea Craiova': 70.5,
+    'Riga': 67.5, 'Hajduk Split': 71.5, 'Jablonec': 70.0, 'Nordsjælland': 72.5, 'AGF': 71.5, "Inter Club d'Escaldes": 58.0, 'Thun': 69.0, 'CSKA Sofia': 69.0,
+    'Kauno Žalgiris': 64.5, 'Mjällby AIF': 69.5, 'Iberia 1999': 64.0, 'Egnatia': 63.0,
+}
+# deutsche Schreibweisen: Listenname -> (Name, Kurzname)
+INTL_NAME = {
+    'Inter Milan': ('Inter Mailand', 'Inter'), 'Milan': ('AC Mailand', 'Milan'), 'Roma': ('AS Rom', 'AS Rom'), 'Napoli': ('SSC Neapel', 'Neapel'), 'Sporting CP': ('Sporting Lissabon', 'Sporting'),
+    'Benfica': ('Benfica Lissabon', 'Benfica'), 'Porto': ('FC Porto', 'Porto'), 'Braga': ('Sporting Braga', 'Braga'), 'Red Star Belgrade': ('Roter Stern Belgrad', 'Roter Stern'),
+    'Copenhagen': ('FC Kopenhagen', 'Kopenhagen'), 'Slavia Prague': ('Slavia Prag', 'Slavia Prag'), 'Sparta Prague': ('Sparta Prag', 'Sparta Prag'), 'Viktoria Plzeň': ('Viktoria Pilsen', 'Pilsen'),
+    'AEK Athens': ('AEK Athen', 'AEK Athen'), 'Olympiacos': ('Olympiakos Piräus', 'Olympiakos'), 'Panathinaikos': ('Panathinaikos Athen', 'Panathinaikos'), 'Shakhtar Donetsk': ('Schachtar Donezk', 'Donezk'),
+    'Club Brugge': ('FC Brügge', 'Brügge'), 'Lyon': ('Olympique Lyon', 'Lyon'), 'Marseille': ('Olympique Marseille', 'Marseille'), 'Monaco': ('AS Monaco', 'Monaco'), 'Lille': ('OSC Lille', 'Lille'),
+    'Lens': ('RC Lens', 'Lens'), 'Rennes': ('Stade Rennes', 'Rennes'), 'Paris Saint-Germain': ('Paris Saint-Germain', 'Paris SG'), 'Atalanta': ('Atalanta Bergamo', 'Atalanta'),
+    'Juventus': ('Juventus Turin', 'Juventus'), 'Barcelona': ('FC Barcelona', 'Barcelona'), 'Liverpool': ('FC Liverpool', 'Liverpool'), 'Arsenal': ('FC Arsenal', 'Arsenal'),
+    'Ajax': ('Ajax Amsterdam', 'Ajax'), 'Feyenoord': ('Feyenoord Rotterdam', 'Feyenoord'), 'Twente': ('FC Twente', 'Twente'), 'Celtic': ('Celtic Glasgow', 'Celtic'),
+    'Heart of Midlothian': ('Heart of Midlothian', 'Hearts'), 'Lech Poznań': ('Lech Posen', 'Lech Posen'), 'Jagiellonia Białystok': ('Jagiellonia Białystok', 'Jagiellonia'),
+    'Universitatea Craiova': ('Universitatea Craiova', 'Craiova'), 'Red Bull Salzburg': ('RB Salzburg', 'Salzburg'), 'Sturm Graz': ('SK Sturm Graz', 'Sturm Graz'), 'Lugano': ('FC Lugano', 'Lugano'),
+    'Thun': ('FC Thun', 'Thun'), 'Gent': ('KAA Gent', 'Gent'), 'Anderlecht': ('RSC Anderlecht', 'Anderlecht'), 'Midtjylland': ('FC Midtjylland', 'Midtjylland'), 'Nordsjælland': ('FC Nordsjælland', 'Nordsjælland'),
+    'AGF': ('AGF Aarhus', 'Aarhus'), 'Brann': ('Brann Bergen', 'Brann'), 'Viking': ('Viking Stavanger', 'Viking'), 'Bodø/Glimt': ('FK Bodø/Glimt', 'Bodø/Glimt'), 'Villarreal': ('FC Villarreal', 'Villarreal'),
+    'Getafe': ('FC Getafe', 'Getafe'), 'Real Betis': ('Betis Sevilla', 'Betis'), 'Real Sociedad': ('Real Sociedad San Sebastián', 'Real Sociedad'), 'Fenerbahçe': ('Fenerbahçe Istanbul', 'Fenerbahçe'),
+    'Galatasaray': ('Galatasaray Istanbul', 'Galatasaray'), 'Beşiktaş': ('Beşiktaş Istanbul', 'Beşiktaş'), 'Ferencváros': ('Ferencváros Budapest', 'Ferencváros'), 'Sabah': ('Sabah Baku', 'Sabah Baku'),
+    'Omonia': ('Omonia Nikosia', 'Omonia'), 'Pafos': ('Pafos FC', 'Pafos'), 'Celje': ('NK Celje', 'Celje'), 'Kairat': ('Kairat Almaty', 'Kairat'), 'Riga': ('Riga FC', 'Riga'), 'Jablonec': ('FK Jablonec', 'Jablonec'),
+    'Levski Sofia': ('Lewski Sofia', 'Lewski Sofia'), 'CSKA Sofia': ('ZSKA Sofia', 'ZSKA Sofia'), 'Egnatia': ('KF Egnatia', 'Egnatia'), 'Iberia 1999': ('Iberia 1999 Tiflis', 'Iberia 1999'),
+    'KuPS': ('KuPS Kuopio', 'KuPS'), 'Mjällby AIF': ('Mjällby AIF', 'Mjällby'), 'Kauno Žalgiris': ('Kauno Žalgiris', 'Kaunas'), 'Lincoln Red Imps': ('Lincoln Red Imps', 'Lincoln'),
+    'Borac Banja Luka': ('Borac Banja Luka', 'Banja Luka'), 'Sint-Truiden': ('VV St. Truiden', 'St. Truiden'), 'Torreense': ('SCU Torreense', 'Torreense'), 'NEC': ('NEC Nijmegen', 'Nijmegen'),
+    'OFI': ('OFI Kreta', 'OFI Kreta'), 'Lillestrøm': ('Lillestrøm SK', 'Lillestrøm'), "Hapoel Be'er Sheva": ("Hapoel Be'er Sheva", "Be'er Sheva"), 'AZ': ('AZ Alkmaar', 'Alkmaar'),
+    'Brighton & Hove Albion': ('Brighton & Hove Albion', 'Brighton'), 'Bournemouth': ('AFC Bournemouth', 'Bournemouth'), 'Sunderland': ('AFC Sunderland', 'Sunderland'),
+    'Manchester City': ('Manchester City', 'Man City'), 'Manchester United': ('Manchester United', 'Man United'), 'Atlético Madrid': ('Atlético Madrid', 'Atlético'), 'Como': ('Como 1907', 'Como'),
+    "Inter Club d'Escaldes": ('Inter Escaldes', 'Escaldes'), 'Union Saint-Gilloise': ('Union Saint-Gilloise', 'Union SG'), 'PSV Eindhoven': ('PSV Eindhoven', 'Eindhoven'),
+    'Slovan Bratislava': ('Slovan Bratislava', 'Bratislava'), 'Dinamo Zagreb': ('Dinamo Zagreb', 'Zagreb'), 'Crystal Palace': ('Crystal Palace', 'Crystal Palace'), 'Ararat-Armenia': ('Ararat-Armenia', 'Ararat'),
+}
+# Handjustierte Stärken internationaler Spieler (gilt unabhängig vom aktuellen Klub)
+STARS_INTL = {
+    'Kylian Mbappé': 92, 'Erling Haaland': 92, 'Lamine Yamal': 92, 'Vinícius Júnior': 90, 'Jude Bellingham': 90, 'Pedri': 90, 'Ousmane Dembélé': 90, 'Rodri': 89, 'Florian Wirtz': 89,
+    'Vitinha': 89, 'Bukayo Saka': 89, 'Federico Valverde': 89, 'Lautaro Martínez': 89, 'Thibaut Courtois': 89, 'Raphinha': 88, 'Mohamed Salah': 87, 'Alexander Isak': 88, 'Declan Rice': 88,
+    'Khvicha Kvaratskhelia': 88, 'Gianluigi Donnarumma': 88, 'Alisson Becker': 88, 'Virgil van Dijk': 87, 'William Saliba': 88, 'Julián Álvarez': 88, 'Nuno Mendes': 88, 'João Neves': 88,
+    'Désiré Doué': 88, 'Achraf Hakimi': 87, 'Martin Ødegaard': 87, 'Gabriel Magalhães': 87, 'Nicolò Barella': 87, 'Alessandro Bastoni': 87, 'Frenkie de Jong': 87, 'Phil Foden': 86,
+    'Alexis Mac Allister': 87, 'Bruno Fernandes': 87, 'Viktor Gyökeres': 87, 'Victor Osimhen': 87, 'Mike Maignan': 87, 'Jan Oblak': 86, 'Aurélien Tchouaméni': 86, 'Rodrygo': 86, 'Pau Cubarsí': 86,
+    'Jules Koundé': 86, 'Dani Olmo': 86, 'Joško Gvardiol': 86, 'Rúben Dias': 86, 'Dominik Szoboszlai': 86, 'Ryan Gravenberch': 86, 'Emiliano Martínez': 86, 'David Raya': 86, 'Martín Zubimendi': 86,
+    'Marquinhos': 86, 'Willian Pacho': 86, 'Fabián Ruiz': 86, 'Bradley Barcola': 86, 'Dean Huijsen': 86, 'Trent Alexander-Arnold': 86, 'Joan García': 86, 'Scott McTominay': 86, 'Marcus Thuram': 86,
+    'Rafael Leão': 86, 'Diogo Costa': 86, 'Antonio Rüdiger': 84, 'Eduardo Camavinga': 85, 'Arda Güler': 85, 'Robert Lewandowski': 84, 'Marc-André ter Stegen': 84, 'Kevin De Bruyne': 85,
+    'Bernardo Silva': 85, 'Omar Marmoush': 85, 'Tijjani Reijnders': 85, 'Rayan Cherki': 85, 'Ederson': 85, 'Ibrahima Konaté': 85, 'Hugo Ekitike': 85, 'Cody Gakpo': 85, 'Eberechi Eze': 85,
+    'Hakan Çalhanoğlu': 85, 'Federico Dimarco': 85, 'Warren Zaïre-Emery': 85, 'Lucas Chevalier': 85, 'Éder Militão': 85, 'Kenan Yıldız': 85, 'Gleison Bremer': 85, 'Bremer': 85, 'Christian Pulisic': 85,
+    'Ademola Lookman': 85, 'Éderson': 85, 'Jérémy Doku': 85, 'Marc Guéhi': 85, 'Gavi': 84, 'Ronald Araújo': 84, 'Fermín López': 84, 'Alejandro Balde': 84, 'Ferran Torres': 84, 'Marcus Rashford': 84,
+    'Jeremie Frimpong': 84, 'Giorgi Mamardashvili': 84, 'Bryan Mbeumo': 84, 'Matheus Cunha': 84, 'Ollie Watkins': 84, 'Kai Havertz': 84, 'Jurriën Timber': 84, 'Mikel Merino': 84,
+    'Paulo Dybala': 83, 'Mile Svilar': 84, 'Stanislav Lobotka': 84, 'Denzel Dumfries': 84, 'Yann Sommer': 83, 'Manuel Akanji': 84, 'Álex Baena': 84, 'Pablo Barrios': 84, 'Dávid Hancko': 84,
+    'Morten Hjulmand': 84, 'Mason Greenwood': 84, 'Mikel Oyarzabal': 84, 'Antoine Semenyo': 84, 'Illia Zabarnyi': 84, 'Álvaro Carreras': 84, 'Franco Mastantuono': 84, 'Marc Cucurella': 84,
+    'Antoine Griezmann': 82, 'Luka Modrić': 82, 'Adrien Rabiot': 83, 'Leroy Sané': 83, 'Romelu Lukaku': 82, 'André-Frank Zambo Anguissa': 83, 'Alessandro Buongiorno': 83, 'Marcos Llorente': 83,
+    'Robin Le Normand': 83, 'José María Giménez': 83, 'Thiago Almada': 83, 'Dušan Vlahović': 83, 'Vangelis Pavlidis': 83, 'Francisco Trincão': 83, 'Pedro Gonçalves': 83, 'Charles De Ketelaere': 83,
+    'Marco Carnesecchi': 83, 'Kaoru Mitoma': 83, 'Jean-Philippe Mateta': 83, 'Adam Wharton': 83, 'Takefusa Kubo': 83, 'Álex Remiro': 83, 'Matthijs de Ligt': 83, 'Lisandro Martínez': 83,
+    'Amad Diallo': 83, 'Benjamin Šeško': 83, 'Morgan Rogers': 83, 'Youri Tielemans': 83, 'Ezri Konsa': 83, 'Gabriel Martinelli': 83, 'Leandro Trossard': 83, 'Riccardo Calafiori': 83,
+    'Evan Ndicka': 83, 'Manu Koné': 83, 'Jonathan David': 83, 'Brahim Díaz': 83, 'Dani Carvajal': 83, 'Gonçalo Ramos': 83, 'Savinho': 83, 'Milan Škriniar': 82, 'Marco Asensio': 82,
+    'Lucas Torreira': 81, 'Barış Alper Yılmaz': 81, 'Kerem Aktürkoğlu': 81, 'Maghnes Akliouche': 82, 'Denis Zakaria': 82, 'Carlos Baleba': 82, 'Ismaïla Sarr': 82, 'Dean Henderson': 82,
+    'Daniel Muñoz': 82, 'Georges Mikautadze': 82, 'Samu Aghehowa': 82, 'Samu Omorodion': 82, 'Ousmane Diomande': 82, 'Gonçalo Inácio': 82, 'Anatoliy Trubin': 82, 'Pierre-Emile Højbjerg': 82,
+    'Gerónimo Rulli': 82, 'Manuel Locatelli': 82, 'Francisco Conceição': 82, 'Pierre Kalulu': 82, 'Michele Di Gregorio': 82, 'Youssouf Fofana': 82, 'Christopher Nkunku': 82, 'Isco': 82,
+    'Gianluca Mancini': 82, 'Amir Rrahmani': 82, 'Alex Meret': 82, 'Giovanni Di Lorenzo': 82, 'Leny Yoro': 82, 'Diogo Dalot': 82, 'Casemiro': 82, 'Boubacar Kamara': 82, 'Ethan Nwaneri': 82,
+    'Noni Madueke': 82, 'Curtis Jones': 82, 'Milos Kerkez': 82, 'Andrew Robertson': 81, 'Rayan Aït-Nouri': 82, "Nico O'Reilly": 82, 'Eric García': 82, 'Marc Casadó': 82, 'Endrick': 82,
+    'Alexander Sørloth': 82, 'Conor Gallagher': 81, 'Khéphren Thuram': 82, 'Andrea Cambiaso': 82, 'Rasmus Højlund': 81, 'Kobbie Mainoo': 81, 'Conor Bradley': 81, 'Myles Lewis-Skelly': 81,
+    'Cristhian Mosquera': 81, 'Abdukodir Khusanov': 81, 'Senne Lammens': 80, 'Patrick Dorgu': 80, 'Mason Mount': 80, 'Manuel Ugarte': 80, 'Matty Cash': 81, 'Amadou Onana': 81, 'John McGinn': 81,
+    'Bryan Cristante': 81, 'Matías Soulé': 81, 'Lorenzo Pellegrini': 80, 'Lois Openda': 81, 'Alexis Saelemaekers': 81, 'Matteo Gabbia': 81, 'Strahinja Pavlović': 81,
+    'Samuele Ricci': 81, 'Fredrik Aursnes': 81, 'Nicolás Otamendi': 80, 'Leonardo Balerdi': 81, 'Corentin Tolisso': 81, 'Granit Xhaka': 81, 'Justin Kluivert': 81, 'Evanilson': 81,
+    'Bart Verbruggen': 81, 'Yankuba Minteh': 80, 'Jerdy Schouten': 81, 'Guus Til': 80, 'Ayase Ueda': 80, 'Quinten Timber': 81, 'Victor Froholdt': 80, 'Rodrigo Mora': 81, 'Iago Aspas': 79,
+    'Aleksandr Golovin': 81, 'Youssef En-Nesyri': 80, 'Anderson Talisca': 80, 'Mauro Icardi': 80, 'İlkay Gündoğan': 80, 'Gianluca Scamacca': 81, 'Raúl Asencio': 81, 'Marc Bernal': 81,
+    'Wojciech Szczęsny': 80, 'Johnny Cardoso': 81, 'Giovanni Reyna': 77, 'Nico Paz': 84, 'Assane Diao': 80, 'Máximo Perrone': 79,
+    'Julián Alvarez': 88, 'Eric Garcia': 82, 'João Cancelo': 83, 'Mateo Kovačić': 83, 'Jack Grealish': 82, 'John Stones': 83, 'Piotr Zieliński': 81, 'Fikayo Tomori': 82,
+    'Tammy Abraham': 80, 'Kepa Arrizabalaga': 81, 'Ben White': 83, 'Andreas Christensen': 82, 'Dominik Livaković': 81, 'Gabriel Jesus': 82, 'Anthony Gordon': 84,
+    'Lucas Hernandez': 83, 'Lucas Digne': 80, 'Matvey Safonov': 82, 'Lucas Beraldo': 81, 'João Palhinha': 83, 'Franck Kessié': 81, 'Arkadiusz Milik': 77, 'Billy Gilmour': 80,
+    'Noa Lang': 81, 'Mathías Olivera': 80, "N'Golo Kanté": 80, 'Mattéo Guendouzi': 81, 'Nathan Aké': 82, 'Nélson Semedo': 79, 'Douglas Luiz': 81, 'Federico Gatti': 81,
+    'Victor Lindelöf': 78, 'Ross Barkley': 78, 'Tyrone Mings': 79, 'Pau Torres': 82, 'Giacomo Raspadori': 81, 'Evan Ferguson': 79, 'Ferdi Kadıoğlu': 81, 'Folarin Balogun': 81,
+    'Ansu Fati': 79, 'Emerson Palmieri': 79, 'Geoffrey Kondogbia': 79, 'Amine Gouiri': 81, 'Igor Paixão': 81, 'Angel Gomes': 80, 'Olivier Giroud': 77, 'Dani Ceballos': 81,
+    'Giovanni Lo Celso': 81, 'Antony': 82, 'Nicolas Pépé': 80, 'Juan Foyth': 80, 'Pape Gueye': 81, 'André Silva': 78, 'Thorgan Hazard': 76, 'Mika Godts': 81,
+}
+
+EU_CODES = {'CL': 'Champions League', 'EL': 'Europa League', 'ECL': 'Conference League'}
+
+
+def gaussish(name):
+    """deterministischer, grob normalverteilter Wert aus dem Namen (für Spieler ohne Artikeldaten)"""
+    hh = h(name + '|q')
+    return (sum((hh >> (8 * i)) & 255 for i in range(4)) / 255.0 - 2.0) * 1.7
+
+
+def lvl14_of(rows):
+    top = sorted(rows, key=lambda r: -r['ovr'])[:14]
+    return sum(r['ovr'] * (1 if i < 11 else 0.4) for i, r in enumerate(top)) / (11 + 1.2)
+
+
+def balance(rows):
+    def cnt(p): return sum(1 for r in rows if r['pos'] == p)
+    def conv(frm, to, need):
+        for r in sorted(rows, key=lambda r: -r['score']):
+            if cnt(to) >= need: break
+            if r['amb'] and r['pos'] in frm and cnt(r['pos']) > 1: r['pos'] = to; r['pos2'] = ''
+    conv(('LA', 'RA'), 'ST', 3)
+    conv(('IV', 'RV'), 'LV', 2); conv(('IV', 'LV'), 'RV', 2); conv(('LV', 'RV'), 'IV', 4)
+    conv(('DM', 'OM', 'LA', 'RA'), 'ZM', 3); conv(('ZM', 'OM'), 'DM', 2)
+
+
+def kit_colors(ib, name):
+    def hexc(k):
+        v = re.sub(r'[^0-9A-Fa-f]', '', ib.get(k, ''))
+        return '#' + v.lower() if len(v) in (3, 6) else None
+    a = hexc('body1'); b = None
+    for k in ('shorts1', 'leftarm1', 'socks1', 'body2'):
+        c = hexc(k)
+        if c and a and c != a: b = c; break
+    if not a:
+        pal = ['#b3202a', '#1f4e9c', '#1c7d48', '#111111', '#e0a100', '#6a2c91', '#0e7c86', '#d25a12']
+        a = pal[h(name) % len(pal)]
+    return [a, b or ('#111111' if a.lower() in ('#ffffff', '#fff') else '#ffffff')]
+
+
+def build_intl(raw_dir, taken_ids):
+    d = os.path.join(raw_dir, 'euro')
+    if not os.path.exists(os.path.join(d, 'euroteams.json')):
+        return [], {}
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import fetch_wikipedia as FW
+    teams = json.load(open(os.path.join(d, 'euroteams.json'), encoding='utf-8'))
+    raw = json.load(gzip.open(os.path.join(d, 'clubraw.json.gz'), 'rt', encoding='utf-8'))
+    pinfo = json.load(gzip.open(os.path.join(d, 'playerraw.json.gz'), 'rt', encoding='utf-8')) if os.path.exists(os.path.join(d, 'playerraw.json.gz')) else {}
+    en2id = {page: v[0] for page, v in CLUBS.items()}
+    ger = {k: [en2id[t['page']] for t in teams[k] if t['nat'] == 'GER' and t['page'] in en2id] for k in teams}
+    out = []; ids = set(taken_ids); n_pl = 0; n_est = 0
+    for key in ('CL', 'EL', 'ECL'):
+        for t in teams[key]:
+            if t['nat'] == 'GER':
+                continue
+            w = raw.get(t['page'], ''); ib = infobox(w)
+            target = INTL_LVL.get(t['name'], {'CL': 77.0, 'EL': 74.0, 'ECL': 70.0}[key])
+            name, short = INTL_NAME.get(t['name'], (t['name'], t['name']))
+            base = re.sub(r'[^A-Z]', '', (ib.get('short name', '') or '').upper())
+            if len(base) != 3: base = re.sub(r'[^A-Z]', '', ''.join(x[0] for x in re.split(r'[\s\-/]+', short.upper()) if x) + short.upper())[:3].ljust(3, 'X')
+            cid = base; k2 = 2
+            while cid in ids: cid = base[:2] + str(k2); k2 += 1
+            ids.add(cid)
+            nat = NATFIX.get(t['nat'], t['nat'])
+            rows = []; seen = set()
+            for sp in FW.parse_squad(w):
+                nm = sp['name'].strip()
+                if not nm or nm in seen: continue
+                seen.add(nm)
+                pg = pinfo.get(sp['page'] or '')
+                pib = infobox(pg['text']) if pg and pg.get('text') else {}
+                by, bm = birth(pib.get('birth_date', '')) if pib else (0, 0)
+                f = features(pib, t['page'], pg['len'] if pg else 0) if pib else None
+                hh = h(nm); est = 0
+                if not by or SEASON - by > 41 or SEASON - by < 15:
+                    est = 1; by = SEASON - (19 + ((hh % 15) + ((hh >> 5) % 15)) // 2)
+                if not bm: bm = 1 + hh % 12
+                pos, amb = parse_positions(pib.get('position', ''), sp['pos'] or 'MF', nm)
+                pn = sp['nat'].strip().upper(); pn = NATFIX.get(pn, COUNTRY.get(sp['nat'].strip().lower(), pn))[:3] or nat
+                if f:
+                    natw = 1.0 if pn in TOP else 0.7 if pn in MID else 0.45
+                    fame = math.log10(max(f['len'], 1500))
+                    score = 0.6 * (fame - 4.0) / 0.45 + 1.1 * natw * min(1.0, math.log1p(f['caps']) / math.log(60)) + 0.5 * min(1.0, f['apps'] / 260.0) + 0.25 * min(1.0, f['ucaps'] / 25.0) + 0.3 * min(1.0, f['cur_apps'] / 60.0)
+                else:
+                    no = sp['no'] or 50  # ohne Artikeldaten: niedrige Rückennummern deuten auf Stammkräfte
+                    score = gaussish(nm) * 0.45 - (0.5 if not sp['page'] else 0) + (0.45 if no <= 11 else 0.15 if no <= 23 else -0.45 if no >= 40 else -0.15)
+                rows.append(dict(name=nm, nat=pn, pos=pos[0], pos2=pos[1] if len(pos) > 1 else '', by=by, bm=bm, age=SEASON - by, score=score, no=sp['no'] or 0,
+                                 cap=1 if 'captain' in sp['other'].lower() and 'vice' not in sp['other'].lower() else 0, est=est, amb=amb, star=nm in STARS_INTL or nm in STARS,
+                                 ucaps=f['ucaps'] if f else 0, caps=f['caps'] if f else 0))
+            if len(rows) < 16:  # Kader in der Quelle nicht auswertbar: der Klub bekommt im Spiel einen erzeugten Kader
+                rows = []
+            if len(rows) > 26:
+                gk = sorted([r for r in rows if r['pos'] == 'TW'], key=lambda r: -r['score'] - (9 if r['star'] else 0))[:3]
+                fld = sorted([r for r in rows if r['pos'] != 'TW'], key=lambda r: -r['score'] - (9 if r['star'] else 0))[:26 - len(gk)]
+                rows = [r for r in rows if r in gk or r in fld]
+            if rows:
+                balance(rows)
+                sc = [r['score'] for r in rows]; mu = statistics.mean(sc); sd = statistics.pstdev(sc) or 1
+                for r in rows:
+                    z = (r['score'] - mu) / sd
+                    if z > 0: z *= 0.85
+                    o = (target - 3.5) + 3.3 * max(-2.2, min(2.6, z))
+                    a = r['age']
+                    o += -3 if a <= 18 else -2 if a == 19 else -1 if a == 20 else 0
+                    o += -1 if a == 33 else -2 if a == 34 else -3 if a == 35 else -4 if a >= 36 else 0
+                    r['raw'] = o
+                    st = STARS_INTL.get(r['name'], STARS.get(r['name']))
+                    # Schutz vor Namensvettern: Ein handgesetzter Wert weit über dem Klubniveau wird gedeckelt
+                    r['ovr'] = int(round(o)) if st is None else int(min(st, round(target + 6))) if st - target > 9 else st
+                for _ in range(4):  # Niveau der ersten Elf auf den Zielwert schieben (handgesetzte Spieler bleiben)
+                    delta = target - lvl14_of(rows)
+                    if abs(delta) < 0.15: break
+                    for r in rows:
+                        if not r['star']: r['raw'] += delta; r['ovr'] = int(round(max(40, min(target + 2, 85, r['raw']))))
+                for r in rows:
+                    a = r['age']; hp = h(r['name'] + 'pot')
+                    span = {16: (8, 15), 17: (7, 14), 18: (6, 12), 19: (5, 10), 20: (4, 8), 21: (3, 7), 22: (2, 5), 23: (1, 4), 24: (0, 2), 25: (0, 1)}.get(max(16, a), (0, 1) if a < 28 else (0, 0))
+                    r['pot'] = int(min(96, max(r['ovr'], r['ovr'] + span[0] + (hp % (span[1] - span[0] + 1)) + (2 if r['ucaps'] >= 10 and a <= 22 else 0) + (2 if r['caps'] >= 3 and a <= 22 else 0))))
+                    n_pl += 1; n_est += r['est']
+                rows.sort(key=lambda r: (['TW', 'IV', 'LV', 'RV', 'DM', 'ZM', 'OM', 'LA', 'RA', 'ST'].index(r['pos']), -r['ovr']))
+            capm = re.search(r'\d[\d,.\s]*', plain(ib.get('capacity', '')))
+            cap = int(re.sub(r'[^\d]', '', capm.group(0))) if capm else 0
+            if cap < 1500 or cap > 110000: cap = 12000
+            stadium = re.sub(r'\s*\(.*?\)', '', plain(ib.get('stadium', '') or ib.get('ground', '')).split('<')[0].split('{{')[0]).strip() or 'Stadion'
+            coach = plain(ib.get('manager', '') or ib.get('coach', '')).split('<')[0].split('{{')[0].strip()
+            lv = lvl14_of(rows) if rows else target
+            out.append(dict(id=cid, name=name, short=short, nat=nat, stadium=stadium[:40], cap=cap, coach=coach[:40], col=kit_colors(ib, name), lvl=round(lv, 1),
+                            rep=int(round(max(25, min(99, 2.36 * lv - 106)))), fanbase=int(round(cap * 0.92 / 100.0) * 100), ec0=key,
+                            p=[[r['name'], r['nat'], r['pos'], r['pos2'], r['by'], r['bm'], r['ovr'], r['pot'], r['no'], r['cap']] for r in rows]))
+    print('intl clubs', len(out), 'players', n_pl, 'birth estimated', n_est)
+    for c in out:
+        best = sorted(c['p'], key=lambda r: -r[6])[:4]
+        print('%-3s %-4s %-24s %s lvl %.1f n=%2d cap %6d %s | %s' % (c['ec0'], c['id'], c['short'], c['nat'], c['lvl'], len(c['p']), c['cap'], c['col'][0], ', '.join('%s %d' % (b[0], b[6]) for b in best)))
+    return out, ger
+
+
+
 def main():
     clubs = json.load(open(os.path.join(RAW, 'clubs.json'), encoding='utf-8'))
     squads = json.load(open(os.path.join(RAW, 'squads.json'), encoding='utf-8'))
@@ -384,8 +607,9 @@ def main():
                               lastPos=lp or (16 if tier == 1 else 9), lastTier=lt, reserve=1 if cid in RESERVES else 0, lvl=round(lvl14, 1), rb=fanbonus,
                               p=[[r['name'], r['nat'], r['pos'], r['pos2'], r['by'], r['bm'], r['ovr'], r['pot'], r['no'], r['cap']] for r in rows]))
     am = [dict(id=a[0], name=a[1], short=a[2], city=a[3], stadium=a[4], cap=a[5], col=a[6], lvl=a[7], rep=a[8], fanbase=int(a[5] * 0.25)) for a in AMATEURS]
-    db = dict(season=SEASON, built=datetime.date.today().isoformat(), source='Kader, Trainer, Stadien: englischsprachige Wikipedia (CC BY-SA 4.0). Spielstärken: eigene Schätzung.',
-              players=n_players, estimatedBirth=n_est, clubs=out_clubs, amateurs=am)
+    intl, euro = build_intl(RAW, [c['id'] for c in out_clubs] + [a[0] for a in AMATEURS])
+    db = dict(season=SEASON, built=os.environ.get('FLUTLICHT_BUILT', datetime.date.today().isoformat()), source='Kader, Trainer, Stadien: englischsprachige Wikipedia (CC BY-SA 4.0). Spielstärken: eigene Schätzung.',
+              players=n_players, estimatedBirth=n_est, clubs=out_clubs, amateurs=am, intl=intl, euro=euro, intlPlayers=sum(len(c['p']) for c in intl))
     js = '/* FLUTLICHT · Datenbank Saison %d/%02d – automatisch erzeugt von tools/build_data.py am %s.\n   Kader/Trainer/Stadien: Wikipedia (CC BY-SA 4.0). Spielstärken sind Schätzwerte, keine offiziellen Daten. */\n' % (SEASON, (SEASON + 1) % 100, db['built'])
     js += '(function (root) { (root.FM = root.FM || {}).DB = ' + json.dumps(db, ensure_ascii=False, separators=(',', ':')) + '; })(typeof globalThis !== \'undefined\' ? globalThis : this);\n'
     open(OUT, 'w', encoding='utf-8').write(js)

@@ -194,7 +194,7 @@
     const lvl = T.level(world, club);
     const made = [];
     for (const pos of need) {
-      const p = FM.Gen.genPlayer(world, { pos, age: R.int(17, 19), mean: lvl - 14, sd: 2.5, club: club.id, nat: 'GER', until: FM.Cal.year(world) + 2 });
+      const p = FM.Gen.genPlayer(world, { pos, age: R.int(17, 19), mean: lvl - 14, sd: 2.5, club: club.id, nat: club.nat || 'GER', until: FM.Cal.year(world) + 2 });
       p.wage = FM.Gen.wageFor(p.ovr, 18); p.youth = 1;
       club.squad.push(p.id); made.push(p);
     }

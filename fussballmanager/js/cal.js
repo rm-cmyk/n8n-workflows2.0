@@ -5,10 +5,13 @@
   const C = (FM.Cal = {});
 
   C.WEEKS = 47;               // letzte Woche = Saisonabschluss
-  C.LEAGUE_NAME = { 1: 'Bundesliga', 2: '2. Bundesliga', 3: '3. Liga', 4: 'Regionalliga' };
+  C.LEAGUE_NAME = { 1: 'Bundesliga', 2: '2. Bundesliga', 3: '3. Liga', 4: 'Regionalliga', 9: 'Ausland' };
   C.CUP_ROUND = ['1. Runde', '2. Runde', 'Achtelfinale', 'Viertelfinale', 'Halbfinale', 'Finale'];
   const SKIP = { 4: 1, 9: 1, 13: 1, 30: 1 }; // Länderspielpausen: 1. und 2. Liga ruhen, die 3. Liga spielt
   const CUP_SLOT = { 8: 1, 14: 2, 22: 3, 31: 4 }; // Liga-Slot → Pokalrunde (Index) unter der Woche
+  // Liga-Slot → Europapokal unter der Woche: acht Spieltage der Ligaphase, dann Playoffs bis Halbfinale mit Hin- und Rückspiel
+  const EURO_SLOT = { 3: { md: 1 }, 5: { md: 2 }, 7: { md: 3 }, 10: { md: 4 }, 12: { md: 5 }, 15: { md: 6 }, 18: { md: 7 }, 19: { md: 8 },
+    21: { ko: 'po', leg: 0 }, 23: { ko: 'po', leg: 1 }, 25: { ko: 'r16', leg: 0 }, 26: { ko: 'r16', leg: 1 }, 28: { ko: 'qf', leg: 0 }, 29: { ko: 'qf', leg: 1 }, 32: { ko: 'sf', leg: 0 }, 33: { ko: 'sf', leg: 1 } };
 
   function slotWeek(s) { return 4 + s + (s > 17 ? 2 : 0); }
 
@@ -26,10 +29,11 @@
       weeks[w].we = { t: 'league', md: [0, skip ? 0 : md12, skip ? 0 : md12, s] };
       weeks[w].label = skip ? 'Länderspielpause' : md12 + '. Spieltag';
       if (CUP_SLOT[s]) weeks[w].mid = { t: 'cup', r: CUP_SLOT[s] };
+      if (EURO_SLOT[s]) weeks[w].mid = Object.assign({ t: 'euro' }, EURO_SLOT[s]);
     }
     weeks[22].label = 'Winterpause'; weeks[23].label = 'Winterpause'; weeks[23].we = { t: 'friendly' };
     weeks[45].mid = { t: 'rel', leg: 0 }; weeks[45].we = { t: 'cup', r: 5 }; weeks[45].label = 'Relegation & Pokalfinale';
-    weeks[46].we = { t: 'rel', leg: 1 }; weeks[46].label = 'Relegation';
+    weeks[46].mid = { t: 'euro', ko: 'f', leg: 0 }; weeks[46].we = { t: 'rel', leg: 1 }; weeks[46].label = 'Europapokal-Finals & Relegation';
     weeks[47].label = 'Saisonabschluss';
     return weeks;
   };
@@ -148,6 +152,8 @@
           const rd = world.cup.rounds[slot.r]; if (rd) { const f = rd.find((x) => x.h === cid || x.a === cid); if (f) out.push({ w: wk.w, where, comp: 'DFB-Pokal', label: C.CUP_ROUND[slot.r], f }); }
         } else if (slot.t === 'rel' && world.releg) {
           for (const rl of world.releg) { const f = rl.legs[slot.leg]; if (f && (f.h === cid || f.a === cid)) out.push({ w: wk.w, where, comp: 'Relegation', label: slot.leg ? 'Rückspiel' : 'Hinspiel', f }); }
+        } else if (slot.t === 'euro' && world.euro) {
+          for (const it of FM.Euro.slotItemsAll(world, slot)) if (it.f.h === cid || it.f.a === cid) out.push({ w: wk.w, where, comp: it.comp, label: it.label, f: it.f });
         } else if (slot.t === 'friendly' && world.friendlies && world.friendlies[wk.w]) {
           const f = world.friendlies[wk.w]; if (f.h === cid || f.a === cid) out.push({ w: wk.w, where, comp: 'Testspiel', label: 'Testspiel', f });
         }

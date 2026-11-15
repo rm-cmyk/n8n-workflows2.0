@@ -25,7 +25,8 @@
     if (p.club) {
       const cur = world.clubs[p.club];
       if (p.joined === world.season && p.joinW && world.week - p.joinW < 20) return { ok: false, why: p.name + ' ist gerade erst gewechselt und will nicht schon wieder umziehen.' };
-      if (club.tier > cur.tier && gap > 1 && !p.listed) return { ok: false, why: p.name + ' möchte nicht in eine tiefere Liga wechseln.' };
+      const lv = (c) => (c.tier === 9 ? 1 : c.tier); // ausländische Erstligisten zählen wie die Bundesliga
+      if (lv(club) > lv(cur) && gap > 1 && !p.listed) return { ok: false, why: p.name + ' möchte nicht in eine tiefere Liga wechseln.' };
     }
     const limit = 6 + (club.rep - 50) / 6;
     if (gap > limit) return { ok: false, why: p.name + ' sieht sich bei einem größeren Klub.' };
@@ -209,6 +210,7 @@
       if (FM.POS_GROUP[p.pos] !== g || p.club === buyer.id || p.club === world.user || p.yo) continue;
       if (p.ovr < lvl - 4 || p.ovr > lvl + 5) continue;
       const ask = X.asking(world, p); if (ask > buyer.money * 0.55) continue;
+      if (p.club && world.clubs[p.club].tier === 9 && (FM.hash(p.name + world.season + world.week) % 10) < 7) continue; // Transfers aus dem Ausland bleiben die Ausnahme
       if (p.club) { const s = world.clubs[p.club]; if (s.rep > buyer.rep + 4 && !p.listed) continue; if (!sellerKeeps(world, s, p)) continue; }
       if (!X.interest(world, p, buyer).ok) continue;
       const age = Cal.year(world) - p.by;
@@ -232,8 +234,9 @@
       const cands = others.filter((c) => { const l = Team.level(world, c); return p.ovr >= l - 5 && p.ovr <= l + 6 && c.squad.length < 30 && X.interest(world, p, c).ok; });
       let fee = U.roundMoney(p.val * (p.listed ? R.range(0.75, 1.1) : R.range(0.95, 1.4)));
       const buyers = cands.filter((c) => c.money >= fee);
-      let from, fromName;
+      let from, fromName, foreign;
       if (buyers.length && R.chance(0.75)) { const b = R.pick(buyers); from = b.id; fromName = b.name; }
+      else if (p.ovr >= 66 && R.chance(0.7) && (foreign = FM.Euro.intl(world).filter((c) => { const l = Team.level(world, c); return p.ovr >= l - 5 && p.ovr <= l + 6 && c.squad.length < 29 && X.interest(world, p, c).ok; })).length) { const b = R.pick(foreign); from = b.id; fromName = b.name; }
       else if (p.ovr >= 62 || p.listed) { from = 'AUS'; fromName = R.pick(['einem Klub aus England', 'einem Klub aus Italien', 'einem Klub aus Spanien', 'einem Klub aus Frankreich', 'einem Klub aus den Niederlanden', 'einem Klub aus der Türkei', 'einem Klub aus Saudi-Arabien', 'einem Klub aus den USA', 'einem Klub aus Österreich', 'einem Klub aus der Schweiz']); if (p.ovr < 70) fee = U.roundMoney(fee * 0.85); }
       else continue;
       world.offers.push({ id: world.nextOid++, pid: id, from, fromName, fee, exp: world.week + 2 });
@@ -252,7 +255,7 @@
       for (const id in world.players) { const p = world.players[id]; if (p.club || p.ab || p.yo || FM.POS_GROUP[p.pos] !== g) continue; if (p.ovr > lvl + 3 || p.ovr < lvl - 9) continue; if (!best || p.ovr > best.ovr) best = p; }
       if (best) { X.move(world, best, club, 0, X.wageDemand(world, best, club), world.season + R.int(1, 3)); continue; }
       const pos = g === 'T' ? 'TW' : R.pick(FM.POS.filter((x) => FM.POS_GROUP[x] === g));
-      const p = Gen.genPlayer(world, { pos, age: R.int(17, 20), mean: lvl - 11, sd: 2.5, club: club.id, nat: R.chance(0.8) ? 'GER' : null, until: world.season + 3 });
+      const p = Gen.genPlayer(world, { pos, age: R.int(17, 20), mean: lvl - 11, sd: 2.5, club: club.id, nat: club.nat || (R.chance(0.8) ? 'GER' : null), until: world.season + 3 });
       club.squad.push(p.id);
     }
   }
@@ -272,6 +275,19 @@
     }
   }
 
+  function intlRaid(world) {
+    const big = FM.Euro.intl(world).filter((c) => (c.base || 0) >= 79 && c.squad.length < 28); if (!big.length) return;
+    const buyer = R.pick(big); const lvl = Team.level(world, buyer); let best = null;
+    for (const id in world.players) {
+      const p = world.players[id]; if (!p.club || p.club === world.user) continue;
+      const s = world.clubs[p.club]; if (!s || s.tier > 2 || s.tier === 9) continue;
+      if (p.ovr < lvl - 2 || p.ovr > lvl + 4 || Cal.year(world) - p.by > 29) continue;
+      if (!sellerKeeps(world, s, p) || !X.interest(world, p, buyer).ok) continue;
+      if (!best || p.ovr + R.f() * 3 > best.ovr + 1.5) best = p;
+    }
+    if (best) X.move(world, best, buyer, U.roundMoney(X.asking(world, best) * 1.1), X.wageDemand(world, best, buyer), world.season + R.int(3, 5));
+  }
+
   X.weekly = function (world) {
     world.offers = world.offers.filter((o) => o.exp >= world.week && world.players[o.pid]);
     const clubs = FM.Game.clubList(world);
@@ -279,6 +295,7 @@
     if (X.windowOpen(world)) {
       const n = world.week <= 9 ? R.int(2, 5) : R.int(1, 3);
       for (let i = 0; i < n; i++) aiDeal(world);
+      if (R.chance(0.2)) intlRaid(world);
       // Klubs, die für ihre Liga zu schwach besetzt sind (z. B. Aufsteiger), rüsten gezielt nach
       for (const t of [1, 2, 3]) {
         const L = world.leagues[t]; if (!L) continue;
@@ -318,6 +335,7 @@
         if (p.until <= world.season + 1) {
           if (club === user) { X.toFree(world, p); left.push(p.name); }
           else if (old < 34 && R.chance(p.ovr >= Team.level(world, club) - 1 && old < 33 ? 1 : p.ovr >= Team.level(world, club) - 3 && old < 32 ? 0.94 : p.ovr >= Team.level(world, club) - 6 ? 0.8 : 0.45)) { p.until = world.season + 1 + R.int(1, 3); p.wage = U.roundMoney(Math.max(p.wage, X.wageDemand(world, p, club) * 0.9)); }
+          else if (club.tier === 9) { removeFromClub(world, p); delete P[p.id]; }
           else X.toFree(world, p);
         }
       }
@@ -340,10 +358,10 @@
         // Kader verschlanken, dann Talente hochziehen
         const sq = U.sortBy(Team.squad(world, club), (p) => p.ovr + (p.pot - p.ovr) * 0.4);
         let over = sq.length - 27;
-        for (const p of sq) { if (over <= 0) break; const c = groupAfterSale(world, club, p); const g = FM.POS_GROUP[p.pos]; if (c[g] < X.MIN[g] + 1) continue; if (p.gen && p.ovr < lvl - 10) { removeFromClub(world, p); delete P[p.id]; } else X.toFree(world, p); over--; }
+        for (const p of sq) { if (over <= 0) break; const c = groupAfterSale(world, club, p); const g = FM.POS_GROUP[p.pos]; if (c[g] < X.MIN[g] + 1) continue; if (club.tier === 9 || (p.gen && p.ovr < lvl - 10)) { removeFromClub(world, p); delete P[p.id]; } else X.toFree(world, p); over--; }
         const n = club.tier === 4 ? 3 : R.int(2, 3);
         for (let i = 0; i < n; i++) {
-          const p = Gen.genPlayer(world, { age: R.int(17, 19), mean: lvl - 19 + club.infra.youth * 1.4 + (club.tier === 4 ? 6 : 0), sd: 3.5, club: club.id, nat: R.chance(0.85) ? 'GER' : null, until: world.season + 4 });
+          const p = Gen.genPlayer(world, { age: R.int(17, 19), mean: lvl - 19 + club.infra.youth * 1.4 + (club.tier === 4 ? 6 : 0), sd: 3.5, club: club.id, nat: club.nat || (R.chance(0.85) ? 'GER' : null), until: world.season + 4 });
           club.squad.push(p.id);
         }
         aiFill(world, club);

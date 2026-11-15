@@ -23,6 +23,7 @@
     return s;
   };
   UI.clubName = function (cid, short) { const c = UI.world.clubs[cid]; return c ? h(short ? c.short : c.name) : h(cid || '–'); };
+  UI.league = function (c) { return c.tier === 9 ? (FM.NAT_NAME[c.nat] || c.nat || 'Ausland') : (Cal.LEAGUE_NAME[c.tier] || ''); };
   UI.pips = function (n, max) { let s = '<span class="pips" title="Stufe ' + n + ' von ' + max + '">'; for (let i = 1; i <= max; i++) s += '<i class="' + (i <= n ? 'on' : '') + '"></i>'; return s + '</span>'; };
   UI.note = function (st) { return st.rn ? (st.ra / st.rn).toFixed(2).replace('.', ',') : '–'; };
   UI.fxScore = function (f) { return f.p ? f.hg + ':' + f.ag + (f.pens ? ' i. E.' : f.et ? ' n. V.' : '') : '–:–'; };
@@ -38,8 +39,8 @@
     if (w.sacked) return 'Jobangebote';
     const st = G.nextStep(w);
     if (st.kind === 'slot') {
-      if (st.userItem) return st.userItem.kind === 'friendly' ? 'Zum Testspiel' : st.userItem.kind === 'cup' ? 'Zum Pokalspiel' : st.userItem.kind === 'rel' ? 'Zur Relegation' : 'Zum Spieltag';
-      return st.def.t === 'cup' ? 'Pokalrunde' : st.def.t === 'rel' ? 'Relegation' : 'Spieltag';
+      if (st.userItem) return st.userItem.kind === 'friendly' ? 'Zum Testspiel' : st.userItem.kind === 'euro' ? 'Zum Europapokal' : st.userItem.kind === 'cup' ? 'Zum Pokalspiel' : st.userItem.kind === 'rel' ? 'Zur Relegation' : 'Zum Spieltag';
+      return st.def.t === 'cup' ? 'Pokalrunde' : st.def.t === 'euro' ? 'Europapokal' : st.def.t === 'rel' ? 'Relegation' : 'Spieltag';
     }
     return st.kind === 'seasonEnd' ? 'Saison abschließen' : 'Woche beenden';
   }
@@ -120,12 +121,12 @@
     const slots = FM.Save.SLOTS.map((s) => ({ s, i: FM.Save.info(s) })).filter((x) => x.i);
     return '<div class="start"><div class="start-in">' +
       '<div><h1 class="title">Flutlicht<span>Fußballmanager ' + Cal.seasonLabel(DB.season) + '</span></h1></div><div class="pitchline"></div>' +
-      '<p style="max-width:62ch;font-size:17px">Übernimm einen von ' + DB.clubs.length + ' Vereinen aus Bundesliga, 2. Bundesliga und 3. Liga. Stell auf, verhandle, bau das Stadion aus – und erkläre dem Vorstand, warum es wieder nur ein 0:0 in Sandhausen wurde.</p>' +
+      '<p style="max-width:62ch;font-size:17px">Übernimm einen von ' + DB.clubs.length + ' Vereinen aus Bundesliga, 2. Bundesliga und 3. Liga – und führe ihn bis in die Champions League gegen ' + (DB.intl || []).length + ' Klubs aus ganz Europa. Stell auf, verhandle, bau das Stadion aus – und erkläre dem Vorstand, warum es wieder nur ein 0:0 in Sandhausen wurde.</p>' +
       '<div class="row">' + (auto ? '<button class="btn go" data-a="loadSlot" data-s="auto">Weiterspielen ▸</button>' : '') + '<button class="btn ' + (auto ? '' : 'go') + '" data-a="go" data-v="new">Neues Spiel</button>' +
       '<label class="btn" style="cursor:pointer">Spielstand-Datei laden<input type="file" accept=".flutlicht,.json,.txt" data-c="importFile" class="sr"></label></div>' +
       (slots.length ? '<div class="card"><h3>Gespeicherte Spielstände</h3>' + slots.map((x) => '<div class="row between"><span><b>' + (x.s === 'auto' ? 'Automatisch' : 'Platz ' + x.s) + '</b> · ' + h(x.i.meta.club) + ' · Saison ' + Cal.seasonLabel(x.i.meta.season) + ', Woche ' + x.i.meta.week + ' <span class="muted">· ' + new Date(x.i.ts).toLocaleString('de-DE') + '</span></span><button class="btn sm" data-a="loadSlot" data-s="' + x.s + '">Laden</button></div>').join('') + '</div>' : '') +
       (FM.Save.persistent() ? '' : '<p class="msg warn">Dieser Browser erlaubt hier kein dauerhaftes Speichern. Sichere deinen Spielstand über „Speichern → Als Datei exportieren“.</p>') +
-      '<p class="muted" style="font-size:13px;max-width:80ch">Datenstand ' + h(DB.built.split('-').reverse().join('.')) + ': ' + DB.players + ' Spieler, Kader, Trainer und Stadien der Saison ' + Cal.seasonLabel(DB.season) + ' aus der Wikipedia (CC BY-SA 4.0). Spielstärken und Talente sind eigene Schätzwerte. Inoffizielles Fanprojekt ohne Verbindung zu Vereinen, Verbänden oder Ligen; keine Logos, keine Lizenzen.</p>' +
+      '<p class="muted" style="font-size:13px;max-width:80ch">Datenstand ' + h(DB.built.split('-').reverse().join('.')) + ': ' + (DB.players + (DB.intlPlayers || 0)) + ' Spieler, Kader, Trainer und Stadien der Saison ' + Cal.seasonLabel(DB.season) + ' aus der Wikipedia (CC BY-SA 4.0). Spielstärken und Talente sind eigene Schätzwerte. Inoffizielles Fanprojekt ohne Verbindung zu Vereinen, Verbänden oder Ligen; keine Logos, keine Lizenzen.</p>' +
       '</div></div>';
   };
   UI.V.new = function () {
@@ -184,7 +185,7 @@
   };
   UI.fixtureLine = function (x, cid) {
     const w = UI.world; const home = x.f.h === cid; const opp = w.clubs[home ? x.f.a : x.f.h];
-    return '<div class="row" style="gap:12px">' + UI.crest(opp, 'lg') + '<div><div class="label">' + h(x.comp) + ' · ' + h(x.label) + ' · ' + Cal.fmt(Cal.dateOf(w.season, x.w, x.where === 'mid' ? 2 : 5)) + '</div><div style="font:800 26px var(--display);text-transform:uppercase">' + (x.f.n ? 'Finale gegen ' : home ? 'Heim gegen ' : 'Auswärts bei ') + h(opp.name) + '</div><div class="muted">' + h(Cal.LEAGUE_NAME[opp.tier]) + (opp.tier <= 3 ? ' · Platz ' + Cal.posOf(w, opp.id) : '') + ' · Stärke ' + Math.round(Team.level(w, opp)) + (opp.coach ? ' · Trainer: ' + h(opp.coach) : '') + '</div></div></div>';
+    return '<div class="row" style="gap:12px">' + UI.crest(opp, 'lg') + '<div><div class="label">' + h(x.comp) + ' · ' + h(x.label) + ' · ' + Cal.fmt(Cal.dateOf(w.season, x.w, x.where === 'mid' ? 2 : 5)) + '</div><div style="font:800 26px var(--display);text-transform:uppercase">' + (x.f.n ? 'Finale gegen ' : home ? 'Heim gegen ' : 'Auswärts bei ') + h(opp.name) + '</div><div class="muted">' + h(UI.league(opp)) + (opp.tier <= 3 ? ' · Platz ' + Cal.posOf(w, opp.id) : '') + ' · Stärke ' + Math.round(Team.level(w, opp)) + (opp.coach ? ' · Trainer: ' + h(opp.coach) : '') + '</div></div></div>';
   };
   UI.miniTable = function (tier, around) {
     const w = UI.world; const tab = Cal.table(w, tier); const me = tab.findIndex((r) => r.cid === w.user);
@@ -199,6 +200,23 @@
     return pos <= 2 ? 'z-up' : pos === 3 ? 'z-rel' : pos > n - 4 ? 'z-down' : '';
   };
 
+  UI.euroCard = function () {
+    const w = UI.world; const EU = FM.Euro; const k = EU.compOf(w, w.user); if (!k) return '';
+    const comp = w.euro.comps[k]; const D = EU.COMPS[k]; let line;
+    const row = EU.table(w, k).find((r) => r.cid === w.user);
+    const last = comp.ko.length ? comp.ko[comp.ko.length - 1] : null;
+    const myTie = (st) => st.ties.find((t) => t.a === w.user || t.b === w.user);
+    if (comp.winner === w.user) line = '<b class="good">Titelgewinn!</b>';
+    else if (!comp.ko.length) line = 'Ligaphase: <b>Platz ' + row.pos + '</b> von ' + comp.teams.length + ' · ' + row.sp + ' von ' + D.md + ' Spielen · ' + row.pts + ' Punkte';
+    else {
+      let st = null; for (const s of comp.ko) if (myTie(s)) st = s;
+      if (st && (st === last || myTie(st).w === w.user)) { const t = myTie(st); line = '<b>' + EU.STAGE_NAME[st === last ? st.stage : last.stage] + '</b>' + (st === last ? ' gegen ' + UI.clubName(t.a === w.user ? t.b : t.a) : ''); }
+      else if (!st && row.pos <= 8 && last.stage === 'po') line = 'Platz ' + row.pos + ' der Ligaphase – <b>direkt im Achtelfinale</b>';
+      else line = st ? 'Ausgeschieden im ' + EU.STAGE_NAME[st.stage] : 'Ausgeschieden nach der Ligaphase (Platz ' + row.pos + ')';
+    }
+    return '<div class="card"><h3>' + D.n + ' <small><button class="btn sm" data-a="go" data-v="comp" data-k="tier" data-kv="' + k + '">Zum Wettbewerb</button></small></h3><p>' + line + '</p><div class="muted">Prämien bisher: ' + U.money((UI.user().fin || {}).euro || 0) + '</div></div>';
+  };
+
   UI.V.office = function () {
     const w = UI.world; const c = UI.user(); const nf = nextFixture(w, c); const todos = UI.todos();
     const last = Cal.clubFixtures(w, c.id).filter((x) => x.f.p).slice(-5).reverse();
@@ -211,6 +229,7 @@
       '<div class="card"><h3>Lazarett &amp; Sperren</h3>' + (inj.length + sus.length ? inj.concat(sus).map((p) => '<div class="row between"><span>' + UI.pos(p.pos) + ' ' + h(p.name) + '</span><span>' + UI.status(p) + (p.inj > 0 ? '<span class="muted">' + h(p.injT) + '</span>' : '') + '</span></div>').join('') : '<p class="muted">Alle Mann an Bord.</p>') + '</div>' +
       '</div><div class="stack" style="gap:16px">' +
       (c.tier <= 3 ? '<div class="card flat"><h3>' + h(Cal.LEAGUE_NAME[c.tier]) + ' <small><button class="btn sm" data-a="nav" data-v="comp">Ganze Tabelle</button></small></h3>' + UI.miniTable(c.tier, true) + '</div>' : '') +
+      UI.euroCard() +
       '<div class="card"><h3>Letzte Ergebnisse</h3>' + (last.length ? last.map((x) => { const home = x.f.h === c.id; const my = home ? x.f.hg : x.f.ag, th = home ? x.f.ag : x.f.hg; const won = x.f.w ? x.f.w === c.id : my > th; const res = x.f.w ? (won ? 'S' : 'N') : my > th ? 'S' : my < th ? 'N' : 'U'; return '<div class="row between"><span><span class="form5"><i class="' + res + '">' + res + '</i></span> ' + (home ? 'H' : 'A') + ' · ' + UI.clubName(home ? x.f.a : x.f.h, 1) + ' <span class="muted">' + h(x.comp) + '</span></span><b class="num">' + UI.fxScore(x.f) + '</b></div>'; }).join('') : '<p class="muted">Noch kein Spiel absolviert.</p>') + '</div>' +
       '<div class="card"><h3>Postfach <small><button class="btn sm" data-a="nav" data-v="inbox">Alle Nachrichten</button></small></h3>' + w.news.slice(0, 4).map((n) => '<div class="news ' + (n.r ? '' : 'unread') + '"><b>' + h(n.t) + '</b><span>' + h(n.x) + '</span></div>').join('') + '</div>' +
       '</div></div>';
@@ -252,7 +271,7 @@
       (FM.Save.persistent() ? '' : '<p class="msg warn">Dieser Browser erlaubt hier kein dauerhaftes Speichern. Der Spielstand bleibt nur, solange diese Seite offen ist – exportiere ihn als Datei.</p>') +
       '<div class="grid g3">' + FM.Save.SLOTS.map((s) => { const i = FM.Save.info(s); return '<div class="card"><h3>' + (s === 'auto' ? 'Automatisch' : 'Platz ' + s) + '</h3>' + (i ? '<p>' + h(i.meta.club) + '<br><span class="muted">Saison ' + Cal.seasonLabel(i.meta.season) + ', Woche ' + i.meta.week + ' · ' + new Date(i.ts).toLocaleString('de-DE') + '</span></p>' : '<p class="muted">Leer</p>') + '<div class="row">' + (s === 'auto' ? '' : '<button class="btn pri" data-a="saveSlot" data-s="' + s + '">Hier speichern</button>') + (i ? '<button class="btn" data-a="askLoad" data-s="' + s + '">Laden</button>' : '') + (i && s !== 'auto' ? '<button class="btn danger" data-a="delSlot" data-s="' + s + '">Löschen</button>' : '') + '</div></div>'; }).join('') + '</div>' +
       '<div class="card"><h3>Datei</h3><p class="muted">Ein exportierter Spielstand lässt sich auf jedem Gerät wieder einlesen.</p><div class="row"><button class="btn" data-a="exportSave">Als Datei exportieren</button><button class="btn" data-a="copySave">In die Zwischenablage kopieren</button><label class="btn" style="cursor:pointer">Datei einlesen<input type="file" accept=".flutlicht,.json,.txt" data-c="importFile" class="sr"></label></div></div>' +
-      '<div class="card"><h3>Spiel</h3><div class="row"><button class="btn danger" data-a="askQuit">Zum Hauptmenü</button></div><p class="muted" style="font-size:13px">FLUTLICHT ' + FM.VERSION + ' · Datenstand ' + h(FM.DB.built) + ' · ' + Object.keys(w.players).length + ' Spieler in der Spielwelt. Kader, Trainer und Stadien: Wikipedia (CC BY-SA 4.0). Spielstärken sind Schätzwerte. Der Europapokal wird nicht ausgespielt, qualifizierte Klubs erhalten pauschale Einnahmen.</p></div>';
+      '<div class="card"><h3>Spiel</h3><div class="row"><button class="btn danger" data-a="askQuit">Zum Hauptmenü</button></div><p class="muted" style="font-size:13px">FLUTLICHT ' + FM.VERSION + ' · Datenstand ' + h(FM.DB.built) + ' · ' + Object.keys(w.players).length + ' Spieler in der Spielwelt. Kader, Trainer und Stadien: Wikipedia (CC BY-SA 4.0). Spielstärken sind Schätzwerte; bei kleineren ausländischen Klubs sind auch Alter und genaue Position geschätzt.</p></div>';
   };
   UI.A.saveSlot = (d) => { const r = FM.Save.save(UI.world, d.s); UI.toast(r.ok ? 'Gespeichert auf Platz ' + d.s + '.' : r.err); UI.render(); };
   UI.A.askLoad = (d) => UI.confirm('Spielstand laden?', 'Der aktuelle Fortschritt seit dem letzten Speichern geht verloren.', 'Laden', 'loadSlotNow', { s: d.s });
