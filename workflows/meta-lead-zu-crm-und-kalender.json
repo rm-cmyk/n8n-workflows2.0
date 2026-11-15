@@ -1,0 +1,1061 @@
+{
+  "name": "Lead-Gen Handwerk: Meta-Lead → CRM → Kalender",
+  "nodes": [
+    {
+      "parameters": {
+        "event": "newLead",
+        "page": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "form": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "options": {}
+      },
+      "id": "f3e51329-eb44-5205-9cf6-8bd871786f01",
+      "name": "Meta Lead Ads (neuer Lead)",
+      "type": "n8n-nodes-base.facebookLeadAdsTrigger",
+      "typeVersion": 1,
+      "position": [
+        40,
+        200
+      ],
+      "webhookId": "afc348dd-823d-55e5-84fb-0ab2cbd8541d"
+    },
+    {
+      "parameters": {},
+      "id": "f511dcc4-de2b-5dda-a55f-e36c1ec45bcb",
+      "name": "Test starten",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        40,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Simuliert einen Lead genau so, wie ihn der Meta-Lead-Ads-Trigger liefert.\n// TYP umstellen, um beide Wege zu testen: 'bewerber' oder 'kunde'\nconst TYP = 'bewerber';\n\n// Testleads haben eine ID mit \"TEST-\". Ihre SMS gehen an \"test_telefon\" aus den Einstellungen,\n// nie an die Nummer unten.\nconst jetzt = new Date().toISOString();\n\nconst bewerber = {\n  id: 'TEST-' + Date.now(),\n  data: {\n    full_name: 'Max Mustermann',\n    phone_number: '+491700000000',\n    email: 'max.mustermann@example.com',\n    'welchen_beruf_hast_du?': 'Anlagenmechaniker SHK (Geselle)',\n    'hast_du_einen_führerschein_klasse_b?': 'Ja',\n    deine_postleitzahl: '70565',\n    'wann_könntest_du_bei_uns_starten?': 'In 1–3 Monaten',\n  },\n  form: { id: '1000000000001', name: 'Recruiting – Anlagenmechaniker SHK', locale: 'de_DE', status: 'ACTIVE' },\n  ad: { id: '2000000000001', name: 'Video Drehtag – Team stellt sich vor' },\n  adset: { id: '3000000000001', name: 'Stuttgart 30 km – Handwerker 20–55' },\n  page: { id: '4000000000001', name: 'Mustermann SHK' },\n  created_time: jetzt,\n};\n\nconst kunde = {\n  id: 'TEST-' + Date.now(),\n  data: {\n    full_name: 'Erika Musterfrau',\n    phone_number: '+497110000000',\n    email: 'erika.musterfrau@example.com',\n    'welches_vorhaben_planen_sie?': 'Badsanierung (komplett)',\n    postleitzahl: '70569',\n    'wann_soll_es_losgehen?': 'In den nächsten 3 Monaten',\n    'welches_budget_haben_sie_eingeplant?': '20.000–30.000 €',\n  },\n  form: { id: '1000000000002', name: 'Anfrage – Badsanierung', locale: 'de_DE', status: 'ACTIVE' },\n  ad: { id: '2000000000002', name: 'Vorher/Nachher Bad Stuttgart' },\n  adset: { id: '3000000000002', name: 'Stuttgart 25 km – Eigenheim 35–65' },\n  page: { id: '4000000000001', name: 'Mustermann SHK' },\n  created_time: jetzt,\n};\n\nreturn [{ json: TYP === 'kunde' ? kunde : bewerber }];\n"
+      },
+      "id": "57bf02bd-5f46-55ec-b5fe-1d0a45e2a6a3",
+      "name": "Testlead (Beispieldaten)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b7903bbe-d240-5f38-8846-51ea663163f0",
+              "name": "betrieb_kurz",
+              "value": "Mustermann SHK",
+              "type": "string"
+            },
+            {
+              "id": "9c909374-448e-55ab-b33b-9f8890571708",
+              "name": "betrieb_adresse",
+              "value": "Musterstraße 1, 70565 Stuttgart",
+              "type": "string"
+            },
+            {
+              "id": "d26d3e8c-36cd-5563-89df-51b48da39d9f",
+              "name": "umbuchungslink",
+              "value": "https://cal.com/dein-betrieb/termin",
+              "type": "string"
+            },
+            {
+              "id": "6ab4a983-5184-59f6-bf51-5dfa2a39f9f1",
+              "name": "telegram_chat_id",
+              "value": "DEINE_TELEGRAM_CHAT_ID",
+              "type": "string"
+            },
+            {
+              "id": "45a19b07-0172-5b1e-ba6a-938dd5c4be2a",
+              "name": "sms_absender",
+              "value": "DEINE_TWILIO_NUMMER",
+              "type": "string"
+            },
+            {
+              "id": "d1383cc8-169a-59fb-af42-fc57db67a59b",
+              "name": "test_telefon",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "0c2799a6-d14e-5b67-8cf6-e9cbdde311e8",
+              "name": "zeitzone",
+              "value": "Europe/Berlin",
+              "type": "string"
+            },
+            {
+              "id": "4e5b8b7d-da0e-5643-a5c7-6b3c22e52363",
+              "name": "zeitfenster_bewerbung",
+              "value": "16:00-18:00",
+              "type": "string"
+            },
+            {
+              "id": "dbca50cf-f131-5ea4-9aab-fbc2d5919125",
+              "name": "dauer_bewerbung_min",
+              "value": 30,
+              "type": "number"
+            },
+            {
+              "id": "e3000375-a94b-5cc0-9d46-a0faa4d45c68",
+              "name": "zeitfenster_besichtigung",
+              "value": "09:00-15:00",
+              "type": "string"
+            },
+            {
+              "id": "e3829019-af09-52d7-ad63-5fe36c073a47",
+              "name": "dauer_besichtigung_min",
+              "value": 60,
+              "type": "number"
+            },
+            {
+              "id": "95c0db06-f9da-5d91-9f67-0073b43b9b83",
+              "name": "arbeitstage",
+              "value": "1,2,3,4,5",
+              "type": "string"
+            },
+            {
+              "id": "6ef5ecb4-4d98-5cec-8028-e5655e548865",
+              "name": "vorlauf_stunden",
+              "value": 18,
+              "type": "number"
+            },
+            {
+              "id": "49c85a16-dce3-5c4d-ad20-436a7f155446",
+              "name": "suchzeitraum_tage",
+              "value": 7,
+              "type": "number"
+            },
+            {
+              "id": "c23d508b-8f1f-548c-869e-dc07df470155",
+              "name": "plz_praefixe",
+              "value": "70,71,73",
+              "type": "string"
+            },
+            {
+              "id": "db58ad70-a6c7-5ca0-b72f-6b32f619cf18",
+              "name": "gesuchte_berufe",
+              "value": "geselle,meister,monteur,anlagenmechaniker,installateur,elektroniker,techniker",
+              "type": "string"
+            },
+            {
+              "id": "894e5cab-b042-57b6-aa78-d1bf4de23fa0",
+              "name": "auftrags_stichworte",
+              "value": "bad,wärmepumpe,heizung,sanierung,photovoltaik,pv,speicher",
+              "type": "string"
+            },
+            {
+              "id": "90dc80ca-4aa0-5755-9a99-628e896e7a90",
+              "name": "mindest_budget",
+              "value": 10000,
+              "type": "number"
+            },
+            {
+              "id": "0caa6425-3a35-5267-a883-fa17a290293d",
+              "name": "mindest_score",
+              "value": 60,
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "8fcfd206-05fd-5d01-810c-9351418615fc",
+      "name": "Einstellungen",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        560,
+        300
+      ],
+      "notes": "Pro Kunde anpassen: Betrieb, Zeitfenster, PLZ-Gebiet, Berufe, Stichworte, Telegram, Twilio, eigene Testnummer."
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Bringt jeden Meta-Lead in ein einheitliches Format, egal wie die Formularfragen heißen.\nconst cfg = $('Einstellungen').item.json;\nconst roh = $json;\n\n// 1) Formularantworten einsammeln (vereinfachte Ausgabe: data{}, Rohausgabe: field_data[])\nconst antworten = {};\nif (roh.data && typeof roh.data === 'object' && !Array.isArray(roh.data)) {\n  Object.assign(antworten, roh.data);\n} else {\n  for (const f of roh.field_data || []) {\n    antworten[f.name] = Array.isArray(f.values) ? f.values.join(', ') : f.values;\n  }\n}\n\n// 2) Formularfragen per Stichwort erkennen. Eigene Fragen hier ergänzen.\n//    Exakte Treffer (z. B. \"full_name\") gehen vor Teiltreffern.\nconst STICHWORTE = {\n  vorname: ['first_name', 'vorname'],\n  nachname: ['last_name', 'nachname'],\n  name: ['full_name', 'name'],\n  telefon: ['phone_number', 'phone', 'telefon', 'handy', 'mobilnummer'],\n  email: ['email', 'e-mail', 'mail'],\n  plz: ['zip_code', 'post_code', 'zip', 'postleitzahl', 'plz'],\n  ort: ['city', 'wohnort', 'stadt', 'ort'],\n  beruf: ['beruf', 'qualifikation', 'ausbildung', 'job_title'],\n  fuehrerschein: ['fuehrerschein', 'fahrerlaubnis'],\n  vorhaben: ['vorhaben', 'projekt', 'leistung', 'interesse'],\n  budget: ['budget', 'investition'],\n  zeitpunkt: ['starten', 'wechsel', 'eintritt', 'zeitraum', 'zeitpunkt', 'losgehen', 'wann', 'verfuegbar'],\n};\n\nconst norm = (s) => String(s ?? '').toLowerCase()\n  .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss');\n\nconst felder = {};\nconst vergeben = new Set();\nfor (const [feld, woerter] of Object.entries(STICHWORTE)) {\n  const offen = Object.keys(antworten).filter((k) => !vergeben.has(k));\n  const key = offen.find((k) => woerter.includes(norm(k)))\n    ?? offen.find((k) => woerter.some((w) => norm(k).includes(w)));\n  if (key !== undefined) {\n    felder[feld] = String(antworten[key] ?? '').trim();\n    vergeben.add(key);\n  }\n}\n\n// 3) Telefonnummer ins internationale Format bringen (+49...)\nconst telefonNormieren = (t) => {\n  let s = String(t ?? '').replace(/[^\\d+]/g, '');\n  if (!s) return '';\n  if (s.startsWith('00')) s = '+' + s.slice(2);\n  else if (s.startsWith('0')) s = '+49' + s.slice(1);\n  else if (!s.startsWith('+')) s = '+' + s;\n  return s;\n};\n\n// 4) Bewerber oder Kunde? Erkennung über den Formularnamen oder eine Berufsfrage.\nconst formular = roh.form?.name || roh.form_name || '';\nconst typ = /bewerb|recruit|karriere|job|stelle|azubi|ausbildung/i.test(formular) || Boolean(felder.beruf)\n  ? 'Bewerber'\n  : 'Kunde';\n\n// 5) Eingangszeit in deutscher Zeit\nconst zone = cfg.zeitzone || 'Europe/Berlin';\nlet eingang = typeof roh.created_time === 'number'\n  ? DateTime.fromSeconds(roh.created_time)\n  : DateTime.fromISO(String(roh.created_time || ''));\nif (!eingang.isValid) eingang = DateTime.fromJSDate(new Date(roh.created_time));\nif (!eingang.isValid) eingang = DateTime.now();\neingang = eingang.setZone(zone);\n\nconst name = felder.name || [felder.vorname, felder.nachname].filter(Boolean).join(' ') || 'Unbekannt';\nconst telefon = telefonNormieren(felder.telefon);\nconst leadId = String(roh.id || roh.leadgen_id || 'L-' + Date.now());\nconst istTest = leadId.startsWith('TEST-');\n\n// Alle übrigen Antworten als lesbarer Text fürs CRM und den Kalender\nconst STANDARD = ['full_name', 'first_name', 'last_name', 'phone_number', 'email'];\nconst antwortenText = Object.entries(antworten)\n  .filter(([k]) => !STANDARD.includes(k))\n  .map(([k, v]) => `${k.replace(/_/g, ' ').replace(/\\?$/, '')}: ${v}`)\n  .join(' | ');\n\nreturn {\n  json: {\n    lead_id: leadId,\n    ist_test: istTest,\n    eingang: eingang.toFormat('yyyy-MM-dd HH:mm'),\n    typ,\n    name,\n    vorname: felder.vorname || name.split(' ')[0],\n    telefon,\n    // Testleads bekommen ihre SMS an die eigene Testnummer, nie an die Beispielnummer\n    sms_an: istTest ? telefonNormieren(cfg.test_telefon) : telefon,\n    email: felder.email || '',\n    plz: (felder.plz || felder.ort || '').match(/\\d{5}/)?.[0] || '',\n    ort: felder.ort || '',\n    beruf: felder.beruf || '',\n    fuehrerschein: felder.fuehrerschein || '',\n    vorhaben: felder.vorhaben || '',\n    budget: felder.budget || '',\n    zeitpunkt: felder.zeitpunkt || '',\n    antworten: antwortenText,\n    formular,\n    anzeige: roh.ad?.name || '',\n    anzeigengruppe: roh.adset?.name || '',\n    betrieb: cfg.betrieb_kurz,\n  },\n};\n"
+      },
+      "id": "5d93e651-6e1f-524b-9a19-d1543f979741",
+      "name": "Lead aufbereiten",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Punkte nach den Kriterien aus \"Einstellungen\". Ab mindest_score gilt der Lead als qualifiziert.\n// Bewerber: Beruf 40 · Führerschein 20 · Wohnort 20 · Starttermin 20\n// Kunde:    Gebiet 40 · Vorhaben 30 · Zeitpunkt 20 · Budget 10 (unter Mindestbudget: -20)\nconst cfg = $('Einstellungen').item.json;\nconst l = $json;\n\nconst norm = (s) => String(s ?? '').toLowerCase()\n  .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss');\nconst liste = (s) => String(s ?? '').split(',').map((x) => norm(x).trim()).filter(Boolean);\nconst KURZFRISTIG = /sofort|direkt|asap|so schnell|naechste|in 1|1\\s*(-|–|bis)\\s*3|diesen monat|innerhalb/;\n\nlet score = 0;\nlet ausschluss = false;\nconst gruende = [];\n\n// Pflicht: erreichbare Telefonnummer\nif (l.telefon.replace(/\\D/g, '').length < 9) {\n  ausschluss = true;\n  gruende.push('keine gültige Telefonnummer');\n}\n\nconst praefixe = liste(cfg.plz_praefixe);\nconst imGebiet = !l.plz ? null : (praefixe.length === 0 || praefixe.some((p) => l.plz.startsWith(p)));\nconst zeit = norm(l.zeitpunkt);\n\nif (l.typ === 'Bewerber') {\n  if (liste(cfg.gesuchte_berufe).some((b) => norm(l.beruf).includes(b))) { score += 40; gruende.push('passender Beruf'); }\n  else gruende.push(l.beruf ? `Beruf prüfen (${l.beruf})` : 'Beruf fehlt');\n\n  const fs = norm(l.fuehrerschein);\n  if (fs.startsWith('ja') || fs.includes('klasse b') || fs === 'b') { score += 20; gruende.push('Führerschein B'); }\n  else if (fs) gruende.push('kein Führerschein');\n  else { score += 10; gruende.push('Führerschein offen'); }\n\n  if (imGebiet === true) { score += 20; gruende.push('wohnt im Einzugsgebiet'); }\n  else if (imGebiet === null) { score += 10; gruende.push('PLZ fehlt'); }\n  else gruende.push('wohnt außerhalb');\n\n  if (KURZFRISTIG.test(zeit)) { score += 20; gruende.push('kurzfristig verfügbar'); }\n  else if (zeit) { score += 5; gruende.push('eher später verfügbar'); }\n  else { score += 10; gruende.push('Starttermin offen'); }\n} else {\n  if (imGebiet === true) { score += 40; gruende.push('im Einzugsgebiet'); }\n  else if (imGebiet === null) { score += 20; gruende.push('PLZ fehlt'); }\n  else { ausschluss = true; gruende.push('außerhalb Einzugsgebiet'); }\n\n  if (liste(cfg.auftrags_stichworte).some((w) => norm(l.vorhaben).includes(w))) { score += 30; gruende.push(`lukratives Vorhaben (${l.vorhaben})`); }\n  else gruende.push(l.vorhaben ? `Vorhaben prüfen (${l.vorhaben})` : 'Vorhaben fehlt');\n\n  if (KURZFRISTIG.test(zeit)) { score += 20; gruende.push('zeitnah'); }\n  else if (zeit) { score += 5; gruende.push('eher später'); }\n  else { score += 10; gruende.push('Zeitpunkt offen'); }\n\n  // \"20.000–30.000 €\" → 20000, \"ab 15k\" → 15000\n  const b = norm(l.budget).replace(/\\./g, '').replace(/\\s/g, '');\n  const m = b.match(/(\\d+)(k|tsd|tausend)?/);\n  const budget = m ? Number(m[1]) * (m[2] ? 1000 : 1) : 0;\n  if (budget >= Number(cfg.mindest_budget)) { score += 10; gruende.push('Budget passt'); }\n  else if (budget > 0) { score -= 20; gruende.push('Budget unter Mindestwert'); }\n}\n\nconst qualifiziert = !ausschluss && score >= Number(cfg.mindest_score);\nconst grund = gruende.join(', ');\nconst du = l.typ === 'Bewerber';\n\n// Texte für SMS und Team-Nachrichten (hier anpassen)\nconst sms_eingang = du\n  ? `Hallo ${l.vorname}, danke für deine Bewerbung bei ${cfg.betrieb_kurz}! Wir melden uns in den nächsten Minuten telefonisch bei dir.`\n  : `Guten Tag ${l.name}, danke für Ihre Anfrage bei ${cfg.betrieb_kurz}. Wir melden uns in den nächsten Minuten telefonisch bei Ihnen.`;\n\nconst team_pruefen = [\n  `🟡 Neuer ${l.typ}: bitte prüfen (Score ${score})`,\n  `${l.name} · ${l.telefon}`,\n  `Grund: ${grund}`,\n  `Antworten: ${l.antworten || '–'}`,\n  `Quelle: ${l.anzeige || '–'} / ${l.formular || '–'}`,\n  '👉 Jetzt anrufen. Danach im CRM kontakt_status auf \"erreicht\" setzen.',\n].join('\\n');\n\nconst team_eskalation = `⚠️ Noch nicht angerufen: ${l.name} (${l.telefon}), ${l.typ}, eingegangen um ${l.eingang.slice(11)} Uhr. Bitte sofort anrufen!`;\n\nreturn {\n  json: { ...l, score, qualifiziert, grund, sms_eingang, team_pruefen, team_eskalation },\n};\n"
+      },
+      "id": "06a05e5a-d778-5046-8406-c822a99f5bc6",
+      "name": "Vorqualifizierung",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2eca2859-78cc-5bee-acba-f2f5ba0cb789",
+              "name": "lead_id",
+              "value": "={{ $json.lead_id }}",
+              "type": "string"
+            },
+            {
+              "id": "5ad02a21-dc11-5be8-8738-388c19822a91",
+              "name": "eingang",
+              "value": "={{ $json.eingang }}",
+              "type": "string"
+            },
+            {
+              "id": "ad64c8db-4bd7-5928-a536-5312ccee342e",
+              "name": "betrieb",
+              "value": "={{ $json.betrieb }}",
+              "type": "string"
+            },
+            {
+              "id": "70d96a2f-5917-58f1-9eb1-5cc45bd8d858",
+              "name": "typ",
+              "value": "={{ $json.typ }}",
+              "type": "string"
+            },
+            {
+              "id": "b8ffbd24-0ebc-5f8d-bacd-c918e1b2782d",
+              "name": "status",
+              "value": "={{ $json.qualifiziert ? 'Qualifiziert' : 'Manuell prüfen' }}",
+              "type": "string"
+            },
+            {
+              "id": "9109e3b6-8e04-5c55-94ed-448ebe99b913",
+              "name": "kontakt_status",
+              "value": "offen",
+              "type": "string"
+            },
+            {
+              "id": "48ddb74c-6f35-5899-b325-0ff63c1cf797",
+              "name": "name",
+              "value": "={{ $json.name }}",
+              "type": "string"
+            },
+            {
+              "id": "c329cdeb-2062-53c7-a83c-12a7da8f964a",
+              "name": "telefon",
+              "value": "={{ $json.telefon }}",
+              "type": "string"
+            },
+            {
+              "id": "2fbc043e-1380-55e3-b51a-9fe8bd6a3844",
+              "name": "email",
+              "value": "={{ $json.email }}",
+              "type": "string"
+            },
+            {
+              "id": "2c2c3c2c-49b6-5326-a442-03648009fa90",
+              "name": "plz",
+              "value": "={{ $json.plz }}",
+              "type": "string"
+            },
+            {
+              "id": "2f89f2c3-39fc-55c5-b8e3-88ab13c84abf",
+              "name": "ort",
+              "value": "={{ $json.ort }}",
+              "type": "string"
+            },
+            {
+              "id": "58bf15b5-3158-54f7-83eb-39e775b9a626",
+              "name": "score",
+              "value": "={{ $json.score }}",
+              "type": "number"
+            },
+            {
+              "id": "d706292f-d1ee-56cf-b716-ff1fc014ad54",
+              "name": "qualifiziert",
+              "value": "={{ $json.qualifiziert ? 'ja' : 'nein' }}",
+              "type": "string"
+            },
+            {
+              "id": "3e7d64bc-f698-5a05-800b-142d2ce0447e",
+              "name": "grund",
+              "value": "={{ $json.grund }}",
+              "type": "string"
+            },
+            {
+              "id": "46eeacc3-3b79-5940-9ec7-d4a7ce6c0814",
+              "name": "antworten",
+              "value": "={{ $json.antworten }}",
+              "type": "string"
+            },
+            {
+              "id": "129da306-7a89-5146-8f62-4159c463e408",
+              "name": "anzeige",
+              "value": "={{ $json.anzeige }}",
+              "type": "string"
+            },
+            {
+              "id": "c8864711-4851-5558-9ccd-dcc50b3a24ed",
+              "name": "anzeigengruppe",
+              "value": "={{ $json.anzeigengruppe }}",
+              "type": "string"
+            },
+            {
+              "id": "662fb3cd-f7d5-5f24-8d19-9e4c1d9269ca",
+              "name": "formular",
+              "value": "={{ $json.formular }}",
+              "type": "string"
+            },
+            {
+              "id": "ea39bb74-6c4b-54b6-ab95-32628f764c92",
+              "name": "termin",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "4951cea1-96f5-5b5c-8045-1e949852e6fc",
+              "name": "kalender_link",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a68cdf17-8416-51f1-ad6a-99bd0ab53b59",
+      "name": "CRM-Felder: neuer Lead",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "lead_id"
+          ],
+          "schema": []
+        },
+        "options": {
+          "cellFormat": "RAW"
+        }
+      },
+      "id": "041691c0-ea39-5946-9775-bd22cc942dae",
+      "name": "CRM: Lead speichern",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f279b5a1-3898-5290-9234-2bdf8a2a3fed",
+              "leftValue": "={{ $('Vorqualifizierung').item.json.qualifiziert }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "2cc16ad3-c51c-55db-8d0c-da79a416193e",
+      "name": "Qualifiziert?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1660,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "calendar",
+        "operation": "availability",
+        "calendar": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "timeMin": "={{ $now.toISO() }}",
+        "timeMax": "={{ $now.plus({ days: Number($('Einstellungen').item.json.suchzeitraum_tage) + 1 }).toISO() }}",
+        "options": {
+          "outputFormat": "raw"
+        }
+      },
+      "id": "c0954d71-923f-5a69-9266-b6f860e55a1e",
+      "name": "Kalender: belegte Zeiten",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        1960,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Sucht den nächsten freien Termin im Zeitfenster aus \"Einstellungen\".\n// Belegte Zeiten kommen aus dem Google Kalender (vorheriger Node, Ausgabe \"RAW\").\nconst cfg = $('Einstellungen').item.json;\nconst lead = $('Vorqualifizierung').item.json;\nconst zone = cfg.zeitzone || 'Europe/Berlin';\n\nconst busy = Object.values($json.calendars || {}).flatMap((c) => c.busy || []);\nconst belegt = busy.map((b) => ({ s: DateTime.fromISO(b.start).toMillis(), e: DateTime.fromISO(b.end).toMillis() }));\n\nconst du = lead.typ === 'Bewerber';\nconst [von, bis] = String(du ? cfg.zeitfenster_bewerbung : cfg.zeitfenster_besichtigung).split('-').map((t) => t.trim());\nconst [vonH, vonM = 0] = von.split(':').map(Number);\nconst [bisH, bisM = 0] = bis.split(':').map(Number);\nconst dauer = Number(du ? cfg.dauer_bewerbung_min : cfg.dauer_besichtigung_min);\nconst tage = String(cfg.arbeitstage).split(',').map(Number); // 1 = Montag ... 7 = Sonntag\nconst heute = DateTime.now().setZone(zone).startOf('day');\nconst frueheste = DateTime.now().setZone(zone).plus({ hours: Number(cfg.vorlauf_stunden) });\nconst suchTage = Number(cfg.suchzeitraum_tage);\n\nlet start = null;\nlet hinweis = '';\nfor (let d = 0; d <= suchTage && !start; d++) {\n  const tag = heute.plus({ days: d });\n  if (!tage.includes(tag.weekday)) continue;\n  const ende = tag.set({ hour: bisH, minute: bisM });\n  for (let s = tag.set({ hour: vonH, minute: vonM }); s.plus({ minutes: dauer }) <= ende; s = s.plus({ minutes: dauer })) {\n    const e = s.plus({ minutes: dauer });\n    const frei = !belegt.some((b) => s.toMillis() < b.e && e.toMillis() > b.s);\n    if (s >= frueheste && frei) { start = s; break; }\n  }\n}\n\n// Kein freier Slot im Suchzeitraum: ersten Arbeitstag danach nehmen und markieren\nif (!start) {\n  hinweis = 'kein freier Slot im Suchzeitraum, bitte prüfen';\n  for (let d = suchTage + 1; !start; d++) {\n    const tag = heute.plus({ days: d });\n    if (tage.includes(tag.weekday)) start = tag.set({ hour: vonH, minute: vonM });\n  }\n}\n\nconst ende = start.plus({ minutes: dauer });\nconst WOCHENTAG = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];\nconst termin_text = `${WOCHENTAG[start.weekday - 1]}, ${start.toFormat('dd.MM.')} um ${start.toFormat('HH:mm')} Uhr`;\n\nconst sms_termin = du\n  ? `Hallo ${lead.vorname}, danke für deine Bewerbung bei ${cfg.betrieb_kurz}! Wir haben dir ein Kennenlernen reserviert: ${termin_text}, ${cfg.betrieb_adresse}. Wir rufen dich gleich kurz an. Passt es nicht? Hier umbuchen: ${cfg.umbuchungslink}`\n  : `Guten Tag ${lead.name}, danke für Ihre Anfrage bei ${cfg.betrieb_kurz}. Wir haben Ihnen einen Vor-Ort-Termin reserviert: ${termin_text}. Wir rufen Sie gleich zur Bestätigung an. Umbuchen: ${cfg.umbuchungslink}`;\n\nconst team_termin = [\n  `✅ Neuer ${lead.typ}: Termin gebucht (Score ${lead.score})`,\n  `${lead.name} · ${lead.telefon}`,\n  `Termin: ${termin_text}${hinweis ? ` (${hinweis})` : ''}`,\n  `Grund: ${lead.grund}`,\n  `Quelle: ${lead.anzeige || '–'} / ${lead.formular || '–'}`,\n  '👉 Jetzt anrufen und Termin bestätigen. Danach im CRM kontakt_status auf \"erreicht\" setzen.',\n].join('\\n');\n\nreturn {\n  json: {\n    termin_start: start.toISO(),\n    termin_ende: ende.toISO(),\n    termin_text,\n    termin_hinweis: hinweis,\n    termin_titel: `${du ? 'Bewerbungsgespräch' : 'Vor-Ort-Termin'}: ${lead.name}${hinweis ? ' (prüfen)' : ''}`,\n    termin_ort: du ? cfg.betrieb_adresse : [lead.plz, lead.ort].filter(Boolean).join(' '),\n    sms_termin,\n    team_termin,\n  },\n};\n"
+      },
+      "id": "c9f52586-fb3a-57d3-877f-d2ed28f6a642",
+      "name": "Freien Termin finden",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2180,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "event",
+        "operation": "create",
+        "calendar": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "start": "={{ $json.termin_start }}",
+        "end": "={{ $json.termin_ende }}",
+        "useDefaultReminders": true,
+        "additionalFields": {
+          "summary": "={{ $json.termin_titel }}",
+          "location": "={{ $json.termin_ort }}",
+          "description": "=Telefon: {{ $('Vorqualifizierung').item.json.telefon }}\nE-Mail: {{ $('Vorqualifizierung').item.json.email }}\nScore: {{ $('Vorqualifizierung').item.json.score }} ({{ $('Vorqualifizierung').item.json.grund }})\nAntworten: {{ $('Vorqualifizierung').item.json.antworten }}\nQuelle: {{ $('Vorqualifizierung').item.json.anzeige }} / {{ $('Vorqualifizierung').item.json.formular }}\nLead-ID: {{ $('Vorqualifizierung').item.json.lead_id }}"
+        }
+      },
+      "id": "12037329-6b65-5bc4-b6d3-cc01c8fa55d6",
+      "name": "Kalender: Termin eintragen",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        2400,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "38a8b1d0-0201-5bc6-aff3-93667ab4fd18",
+              "name": "lead_id",
+              "value": "={{ $('Vorqualifizierung').item.json.lead_id }}",
+              "type": "string"
+            },
+            {
+              "id": "5f2fe4b2-0e31-5043-bf47-5827a950b6b9",
+              "name": "status",
+              "value": "Termin gebucht",
+              "type": "string"
+            },
+            {
+              "id": "b5a34939-7d2f-5aed-bbed-40861c320bef",
+              "name": "termin",
+              "value": "={{ $('Freien Termin finden').item.json.termin_text }}",
+              "type": "string"
+            },
+            {
+              "id": "5a36c7a3-dc35-5d58-b68a-ef063e5d49e9",
+              "name": "kalender_link",
+              "value": "={{ $json.htmlLink }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "88e52338-ad86-5e2b-a966-5630309d435c",
+      "name": "CRM-Felder: Termin",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2620,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "lead_id"
+          ],
+          "schema": []
+        },
+        "options": {
+          "cellFormat": "RAW"
+        }
+      },
+      "id": "d4bbb8fa-ec16-55d8-b96c-2229c1be1544",
+      "name": "CRM: Termin speichern",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2840,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "from": "={{ $('Einstellungen').item.json.sms_absender }}",
+        "to": "={{ $('Vorqualifizierung').item.json.sms_an }}",
+        "message": "={{ $('Freien Termin finden').item.json.sms_termin }}",
+        "options": {}
+      },
+      "id": "fbe8861e-8bd2-5808-af79-bb6dc2257e83",
+      "name": "SMS: Terminbestätigung",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        3060,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Einstellungen').item.json.telegram_chat_id }}",
+        "text": "={{ $('Freien Termin finden').item.json.team_termin }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "069c40af-96b2-5a15-bb93-47b52595cf0a",
+      "name": "Team: Termin gebucht",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        3280,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "from": "={{ $('Einstellungen').item.json.sms_absender }}",
+        "to": "={{ $('Vorqualifizierung').item.json.sms_an }}",
+        "message": "={{ $('Vorqualifizierung').item.json.sms_eingang }}",
+        "options": {}
+      },
+      "id": "9494ebbe-c8ee-587d-8b5c-58e709656c37",
+      "name": "SMS: Eingangsbestätigung",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        1960,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Einstellungen').item.json.telegram_chat_id }}",
+        "text": "={{ $('Vorqualifizierung').item.json.team_pruefen }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "a3a1aa1d-112d-52d1-9b89-d486fc8107e1",
+      "name": "Team: Lead prüfen",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2180,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 5,
+        "unit": "minutes"
+      },
+      "id": "bf2c51fb-dbcb-5b96-aeb1-62d7e9e7ff53",
+      "name": "5 Minuten warten",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        3600,
+        300
+      ],
+      "webhookId": "49a4bf5c-cef8-5fb4-8a31-fdfb0ed97bc3"
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "lead_id",
+              "lookupValue": "={{ $('Vorqualifizierung').item.json.lead_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "dc334a3d-1000-5b33-b341-a2def73c6166",
+      "name": "CRM: Kontaktstatus lesen",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        3820,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0fc57ddf-1f61-5ef9-914f-d08042ed3e09",
+              "leftValue": "={{ $json.kontakt_status }}",
+              "rightValue": "offen",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "bff30144-215f-501a-a1f2-0ed1de59503a",
+      "name": "Noch nicht angerufen?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        4040,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Einstellungen').item.json.telegram_chat_id }}",
+        "text": "={{ $('Vorqualifizierung').item.json.team_eskalation }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "c87a14a5-d436-5612-af37-aba9d538d733",
+      "name": "Team: Eskalation",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        4260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Meta-Lead → CRM → Kalender\n\n**Ablauf:** Lead aus dem Meta-Formular → aufbereiten → Vorauswahl nach Punkten → CRM (Google Sheet) →\n- **qualifiziert:** nächsten freien Termin suchen, in Google Kalender eintragen, SMS an den Lead, Team per Telegram\n- **nicht qualifiziert:** SMS „wir rufen an“, Team prüft selbst\n- **nach 5 Minuten:** steht `kontakt_status` noch auf „offen“, kommt eine Eskalation\n\n### Einrichtung\n1. Google Sheet anlegen, Zeile 1 = Kopfzeile unten (in A1 einfügen).\n2. Zugänge verbinden: Facebook Lead Ads, Google Sheets, Google Calendar, Twilio, Telegram.\n3. In den 3 CRM-Nodes Tabelle und Blatt wählen, in den 2 Kalender-Nodes den Kalender.\n4. Node **Einstellungen** ausfüllen (Betrieb, Zeitfenster, PLZ-Gebiet, Berufe, Telegram-Chat-ID, Twilio-Nummer, `test_telefon` = deine Handynummer).\n5. Testen: **Test starten**. Im Node *Testlead* `TYP` auf `'kunde'` stellen für den Kunden-Weg.\n6. Live: im Meta-Trigger Seite und Formular wählen, Workflow aktivieren.\n\n### Kopfzeile fürs Sheet\n```\nlead_id\teingang\tbetrieb\ttyp\tstatus\tkontakt_status\tname\ttelefon\temail\tplz\tort\tscore\tqualifiziert\tgrund\tantworten\tanzeige\tanzeigengruppe\tformular\ttermin\tkalender_link\n```\n\n### Datenschutz\nIm Meta-Formular die Einwilligung für Anruf und SMS abfragen. AV-Verträge mit Google, Twilio und Telegram prüfen.",
+        "height": 1000,
+        "width": 600,
+        "color": 4
+      },
+      "id": "cc741ee9-ab27-5e96-ba8d-98cd18996ef2",
+      "name": "Anleitung",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -640,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## ① Eingang\nLive: Meta-Trigger. Test: **Test starten**. Der Testlead hat genau das Format, das Meta liefert.",
+        "height": 560,
+        "width": 480
+      },
+      "id": "dc9f4b99-53ba-550b-9a6d-018044c36c89",
+      "name": "① Eingang",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## ② Aufbereiten, Vorauswahl, CRM\nFormularfragen werden per Stichwort erkannt (eigene Fragen in *Lead aufbereiten* ergänzen).\n**Bewerber:** Beruf 40 · Führerschein 20 · Wohnort 20 · Starttermin 20\n**Kunde:** Gebiet 40 · Vorhaben 30 · Zeitpunkt 20 · Budget 10\nAb `mindest_score` (60) qualifiziert. Jeder Lead landet im CRM, doppelte Meta-Zustellungen werden über `lead_id` zusammengeführt.",
+        "height": 480,
+        "width": 1380
+      },
+      "id": "2d9861a0-ecf6-5e0b-86cc-2e05c9138203",
+      "name": "② Aufbereiten, Vorauswahl, CRM",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        480,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## ③ Qualifiziert: Termin buchen\nSucht den nächsten freien Termin im Zeitfenster (belegte Zeiten im Google Kalender werden übersprungen), trägt ihn ein, schreibt ihn ins CRM, schickt die SMS und meldet ihn dem Team.\n**Variante:** statt fester Reservierung nur einen Buchungslink (Cal.com, Calendly) per SMS schicken.\n**WhatsApp statt SMS:** WhatsApp-Business-Node mit freigegebener Vorlage, weil der Betrieb zuerst schreibt.",
+        "height": 400,
+        "width": 1580
+      },
+      "id": "dd39a00f-79da-5579-818e-310759f942cf",
+      "name": "③ Qualifiziert: Termin buchen",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1900,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## ④ Nicht qualifiziert\nKein automatischer Termin. Der Lead bekommt sofort eine SMS, das Team prüft und ruft an.",
+        "height": 340,
+        "width": 500
+      },
+      "id": "e7314582-8e72-52c3-a5f9-c982c26563bb",
+      "name": "④ Nicht qualifiziert",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1900,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## ⑤ 5-Minuten-Regel\nNach 5 Minuten wird das CRM gelesen. Steht `kontakt_status` noch auf „offen“, geht eine Eskalation raus. Zum Testen die Wartezeit auf 10 Sekunden stellen.",
+        "height": 380,
+        "width": 900,
+        "color": 3
+      },
+      "id": "385849ae-6c0e-5620-834a-ee70ff8b4353",
+      "name": "⑤ 5-Minuten-Regel",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3540,
+        120
+      ]
+    }
+  ],
+  "connections": {
+    "Meta Lead Ads (neuer Lead)": {
+      "main": [
+        [
+          {
+            "node": "Einstellungen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Test starten": {
+      "main": [
+        [
+          {
+            "node": "Testlead (Beispieldaten)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Testlead (Beispieldaten)": {
+      "main": [
+        [
+          {
+            "node": "Einstellungen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Einstellungen": {
+      "main": [
+        [
+          {
+            "node": "Lead aufbereiten",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead aufbereiten": {
+      "main": [
+        [
+          {
+            "node": "Vorqualifizierung",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vorqualifizierung": {
+      "main": [
+        [
+          {
+            "node": "CRM-Felder: neuer Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CRM-Felder: neuer Lead": {
+      "main": [
+        [
+          {
+            "node": "CRM: Lead speichern",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CRM: Lead speichern": {
+      "main": [
+        [
+          {
+            "node": "Qualifiziert?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qualifiziert?": {
+      "main": [
+        [
+          {
+            "node": "Kalender: belegte Zeiten",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "SMS: Eingangsbestätigung",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kalender: belegte Zeiten": {
+      "main": [
+        [
+          {
+            "node": "Freien Termin finden",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Freien Termin finden": {
+      "main": [
+        [
+          {
+            "node": "Kalender: Termin eintragen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kalender: Termin eintragen": {
+      "main": [
+        [
+          {
+            "node": "CRM-Felder: Termin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CRM-Felder: Termin": {
+      "main": [
+        [
+          {
+            "node": "CRM: Termin speichern",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CRM: Termin speichern": {
+      "main": [
+        [
+          {
+            "node": "SMS: Terminbestätigung",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SMS: Terminbestätigung": {
+      "main": [
+        [
+          {
+            "node": "Team: Termin gebucht",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Team: Termin gebucht": {
+      "main": [
+        [
+          {
+            "node": "5 Minuten warten",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SMS: Eingangsbestätigung": {
+      "main": [
+        [
+          {
+            "node": "Team: Lead prüfen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Team: Lead prüfen": {
+      "main": [
+        [
+          {
+            "node": "5 Minuten warten",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5 Minuten warten": {
+      "main": [
+        [
+          {
+            "node": "CRM: Kontaktstatus lesen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CRM: Kontaktstatus lesen": {
+      "main": [
+        [
+          {
+            "node": "Noch nicht angerufen?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Noch nicht angerufen?": {
+      "main": [
+        [
+          {
+            "node": "Team: Eskalation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Berlin"
+  }
+}
